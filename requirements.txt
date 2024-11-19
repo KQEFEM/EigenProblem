@@ -20,4 +20,5 @@ seaborn
 jupyter
 ipython
 
- 
+ # Multi-processing 
+ mpi4py
