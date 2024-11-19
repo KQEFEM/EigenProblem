@@ -1,0 +1,20 @@
+# Core scientific computing libraries
+numpy
+scipy
+
+# Machine learning library
+scikit-learn
+
+# Finite Element Method library
+skfem
+
+# Data analysis and manipulation
+pandas
+
+# Data visualization libraries
+matplotlib
+seaborn
+
+# Interactive computing environments
+jupyter
+ipython
