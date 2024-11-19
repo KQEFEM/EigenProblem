@@ -6,7 +6,7 @@ scipy
 scikit-learn
 
 # Finite Element Method library
-skfem
+scikit-fem[all]
 
 # Data analysis and manipulation
 pandas
