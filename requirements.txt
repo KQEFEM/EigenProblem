@@ -7,14 +7,17 @@ scikit-learn
 
 # Finite Element Method library
 scikit-fem[all]
-
 # Data analysis and manipulation
 pandas
 
 # Data visualization libraries
 matplotlib
 seaborn
+ pyvista 
+ pyamg
 
 # Interactive computing environments
 jupyter
 ipython
+
+ 
