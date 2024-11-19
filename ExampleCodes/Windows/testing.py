@@ -34,6 +34,8 @@ try:
 except (ImportError, AttributeError):
     print('This demo requires pyamg, install using "pip install pyamg"')
     exit(0)
+import os
+os.environ["OMP_NUM_THREADS"] = "1"
 
 
 import ufl
@@ -51,7 +53,12 @@ from dolfinx.mesh import CellType, create_box, locate_entities_boundary
 from ufl import ds, dx, grad, inner
 
 # -
-
+try:
+    # your script code here
+    from dolfinx import *
+    print("FEniCS is imported successfully")
+except Exception as e:
+    print(f"Error occurred: {e}")
 
 # +
 def poisson_problem(dtype: npt.DTypeLike, solver_type: str):
@@ -63,6 +70,8 @@ def poisson_problem(dtype: npt.DTypeLike, solver_type: str):
     """
 
     real_type = np.real(dtype(0)).dtype
+    print("It finally runs!")
+
     mesh = create_box(
         comm=MPI.COMM_WORLD,
         points=[(0.0, 0.0, 0.0), (3.0, 2.0, 1.0)],
@@ -70,6 +79,7 @@ def poisson_problem(dtype: npt.DTypeLike, solver_type: str):
         cell_type=CellType.tetrahedron,
         dtype=real_type,
     )
+    print("It finally runs!")
 
     V = functionspace(mesh, ("Lagrange", 1))
 
@@ -229,10 +239,11 @@ def elasticity_problem(dtype):
 
 # -
 
-
+print("It finally runs!")
 # Solve Poission problem with different scalar types
 poisson_problem(np.float32, "ruge_stuben")
 poisson_problem(np.float64, "ruge_stuben")
+print("It finally runs!")
 
 # For complex, pyamg requires smoothed aggregation multigrid
 if not sys.platform.startswith("win32"):
