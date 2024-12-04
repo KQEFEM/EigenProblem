@@ -16,8 +16,15 @@ from mpi4py import MPI
 from dolfinx import fem, io, mesh
 from ufl import dx, grad, inner
 from dolfinx.io import XDMFFile
+import os
   
-mesh, cell_tag, facet_tag = dolfinx.io.gmshio.read_from_msh('/home/kieran/git/EigenProblem/sphere_mesh.msh', MPI.COMM_WORLD, 0, gdim=3)
+ # Construct the file path to the mesh in the EigenProblem/meshes folder
+mesh_dir = os.path.join(os.path.expanduser('~'), 'EigenProblem', 'meshes')
+mesh_file = 'sphere_mesh.msh'
+mesh_path = os.path.join(mesh_dir, mesh_file) 
+ 
+mesh, cell_tag, facet_tag = dolfinx.io.gmshio.read_from_msh(mesh_path, MPI.COMM_WORLD, 0, gdim=3)
+raise NotImplementedError
 
 # Function to read mesh from an XDMF file
 def read_xdmf_mesh(file_path, comm=MPI.COMM_WORLD):
