@@ -7,7 +7,10 @@ scikit-learn
 
 # Finite Element Method library
 scikit-fem[all]
+
+#meshing packages
 gmsh-sdk
+meshio
 
 # Data analysis and manipulation
 pandas
