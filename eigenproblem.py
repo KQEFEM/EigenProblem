@@ -11,33 +11,40 @@ else:
     print("This demo requires petsc4py.")
     exit(0)
 
+import dolfinx
 from mpi4py import MPI
+from dolfinx import fem, io, mesh
+from ufl import dx, grad, inner
+from dolfinx.io import XDMFFile
+  
+mesh, cell_tag, facet_tag = dolfinx.io.gmshio.read_from_msh('/home/kieran/git/EigenProblem/sphere_mesh.msh', MPI.COMM_WORLD, 0, gdim=3)
 
-# +
-import numpy as np
+# Function to read mesh from an XDMF file
+def read_xdmf_mesh(file_path, comm=MPI.COMM_WORLD):
+    try:
+        with io.XDMFFile(comm, file_path, "r") as xdmf:
+            msh = xdmf.read_mesh(name="Grid")
+            msh.name = "Imported mesh"
+        return msh
+    except Exception as e:
+        print(f"Error reading mesh from {file_path}: {e}")
+        exit(1)
 
-import ufl
-import MeshingCodes as meshing
-from dolfinx import fem, io, mesh, plot
-from dolfinx.mesh import create_box
-from dolfinx.fem.petsc import LinearProblem
+# File path to the XDMF mesh
+file_path = "/home/kieran/git/EigenProblem/out_gmsh/mesh.xdmf"
 
-from ufl import ds, dx, grad, inner
+# Read the mesh
+msh1 = read_xdmf_mesh(file_path, comm=MPI.COMM_WORLD)
 
-
-msh1 = create_box(
-    comm=MPI.COMM_WORLD,
-    points=[(0.0, 0.0, 0.0), (3.0, 2.0, 1.0)],
-    n=[30, 20, 10],
-    cell_type=mesh.CellType.tetrahedron,
-)
-
-msh1 = meshing.main()
-
+# Check the mesh
 print(msh1)
-
 print(type(msh1))
-element = ufl.finiteelement("N1curl", msh1.ufl_cell(), 1)
-V = fem.FunctionSpace(msh1, element)# Define basis and bilinear form
+
+# Create a function space for curl-conforming elements
+V = fem.FunctionSpace(msh1, "N1curl", cppV=1)
 u = fem.TrialFunction(V)
 v = fem.TestFunction(V)
+
+# Define a bilinear form for demonstration
+a = inner(grad(u), grad(v)) * dx
+print(a)
