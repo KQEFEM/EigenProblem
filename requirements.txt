@@ -8,13 +8,22 @@ scikit-learn
 # Finite Element Method library
 scikit-fem[all]
 
+#meshing packages
+gmsh-sdk
+meshio
+
 # Data analysis and manipulation
 pandas
 
 # Data visualization libraries
 matplotlib
 seaborn
+ pyvista 
+ pyamg
 
 # Interactive computing environments
 jupyter
 ipython
+
+ # Multi-processing 
+ mpi4py
