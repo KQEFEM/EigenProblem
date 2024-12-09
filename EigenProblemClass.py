@@ -16,11 +16,11 @@ from dolfinx import fem
 #
 from dolfinx.mesh import CellType, create_box
 from mpi4py import MPI
-from petsc4py import PETSc
+from slepc4py import SLEPc
 
-assert (
-    np.dtype(PETSc.ScalarType).kind == "c"
-), "PETSc is not configured for complex numbers."
+# assert (
+#     np.dtype(PETSc.ScalarType).kind == "c"
+# ), "PETSc is not configured for complex numbers."
 
 
 class FENicSEigenProblem:
@@ -216,6 +216,52 @@ class FENicSEigenProblem:
         # Create the boundary condition
         self.bc = fem.dirichletbc(u_D, boundary_dofs, self.V)
 
+    def solve_eigenvalue_problem(self):
+        """Solves the eigenvalue problem for the bilinear form using SLEPc."""
+        # Create a solution function in the function space
+        self.solution = fem.Function(self.V)
+
+        # Define the bilinear form (A) and mass matrix (B), assuming B is identity here
+        A = ufl.lhs(self.LHS)  # Stiffness matrix (bilinear form)
+        B = ufl.Identity(
+            self.V.dofmap().size()
+        )  # Mass matrix (identity for standard eigenvalue problems)
+
+        # Mass matrix (identity for standard eigenvalue problems)
+
+        # Convert UFL expressions to matrices (PETSc)
+        A_pet = fem.assemble_matrix(A, self.bc)
+        B_pet = fem.assemble_matrix(B, self.bc)
+
+        # Convert the matrices to PETSc format
+        A_pet.assemble()
+        B_pet.assemble()
+
+        # Setup the eigenvalue problem: A u = λ B u
+        eig_problem = SLEPc.EPS().create()  # Eigenvalue problem solver (SLEPc)
+        eig_problem.setOperators(A_pet, B_pet)  # Set A and B matrices
+        eig_problem.setProblemType(
+            SLEPc.EPS.ProblemType.GHEP
+        )  # Generalized Hermitian Eigenvalue Problem
+        eig_problem.setWhichEigenpairs(
+            SLEPc.EPS.Which.SMALLEST
+        )  # Solve for smallest eigenvalues
+
+        # Solve the eigenvalue problem
+        eig_problem.solve()
+
+        # Get the number of converged eigenvalues
+        num_eigenvalues = eig_problem.getConverged()
+
+        # Print eigenvalues and eigenvectors (eigenfunctions in FEM)
+        for i in range(num_eigenvalues):
+            eigenvalue = eig_problem.getEigenvalue(i)
+            eigenvector = eig_problem.getEigenvector(i)
+            print(f"Eigenvalue {i}: {eigenvalue}")
+            print(f"Eigenvector {i}: {eigenvector}")
+
+        print("done")
+
     def solve_problem(self):
         """Solves the bilinear form."""
         self.solution = fem.Function(self.V)
@@ -280,7 +326,7 @@ class FENicSEigenProblem:
         self.create_mesh_and_function_space()
         print("\n\n Computed mesh and function space \n\n ")
         self.weak_form()
-
+        self.solve_eigenvalue_problem()
         self.solve_problem()
         self.save_solution()
 
