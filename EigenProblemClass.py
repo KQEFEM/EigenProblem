@@ -1,6 +1,5 @@
 """
 This is for solving mask deformation problems using FEniCS (FEM).
-The appraoch uses the idea of membrane deformations, a quasi-3D modelling approach.
 """
 
 import datetime
@@ -13,16 +12,15 @@ from logging import warn
 import numpy as np
 import ufl as ufl
 from dolfinx import fem
-from dolfinx.fem.petsc import LinearProblem
+
+#
 from dolfinx.mesh import CellType, create_box
 from mpi4py import MPI
 from petsc4py import PETSc
 
-print(PETSc.ScalarType)
 assert (
     np.dtype(PETSc.ScalarType).kind == "c"
-)  # This switches to complex numbers in PETSc # https://jsdokken.com/dolfinx-tutorial/chapter1/complex_mode.html
-# from dolfinx.fem import SubDomain
+), "PETSc is not configured for complex numbers."
 
 
 class FENicSEigenProblem:
@@ -227,7 +225,7 @@ class FENicSEigenProblem:
 
             fem.solve(a == L, self.u, self.bc)
         else:
-            problem = LinearProblem(a, self.u, self.bc)
+            problem = fem.fem.petscLinearProblem(a, self.u, self.bc)
             uh = problem.solve()
 
         print("solved")
@@ -318,7 +316,6 @@ def test():
     """ Cube """
     membrane_deformation = FENicSEigenProblem(
         num_nodes=1000,
-        experiment_type="test_problem",
         domain_type="cube",
         test_mode=True,
     )
