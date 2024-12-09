@@ -33,6 +33,7 @@ ipython
  petsc
  petsc4py
  ufl
+ slepc4py # needed for eigensolver
 
  # System packages (install via system package manager)
 # Ubuntu: sudo apt install build-essential 
