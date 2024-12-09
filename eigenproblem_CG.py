@@ -6,22 +6,11 @@ import dolfinx.fem.petsc
 import dolfinx.nls.petsc
 from dolfinx.mesh import create_box, CellType
 from ufl import (
-    as_matrix,
     dot,
-    cos,
-    sin,
-    SpatialCoordinate,
-    Identity,
-    grad,
     curl,
-    ln,
-    tr,
-    det,
-    variable,
-    derivative,
-    TestFunction,
-    TrialFunction,
     dx,
+    TrialFunction,
+    TestFunction,
 )
 
 # Mesh parameters
@@ -40,15 +29,14 @@ print(f"Mesh topology dimension d={dim}.")
 degree = 1
 shape = (dim,)
 V = fem.functionspace(mesh, ("P", degree, shape)) # Lagrange polynomials of degree 1 in 3D
-
 # Define basis and bilinear form
 u = TrialFunction(V)
 v = TestFunction(V)
 
 # Define problem parameters (frequency set to 0 for unexcited system)
-frequency = fem.Constant(mesh,1.0)  # omega = 0 for unexcited system
-permittivity = fem.Constant(mesh,1.0)  # epsilon
-permeability = fem.Constant(mesh,1.0)  # mu
+frequency = fem.Constant(mesh, 1.0)  # omega = 0 for unexcited system
+permittivity = fem.Constant(mesh, 1.0)  # epsilon
+permeability = fem.Constant(mesh, 1.0)  # mu
 
 # Define a bilinear form for demonstration
 # Assume that all the boundaries are \nabla \times E = 0
@@ -73,9 +61,8 @@ mass = frequency**2 * permittivity * permeability * dot(u, v) * dx
 # Assemble matrix
 a = curl_curl
 b = mass
-
-# Assemble matrix A
-A = fem.petsc.assemble_matrix(a + b)
+A = fem.assemble_matrix(a + b)
+A.assemble()  # Ensure the matrix is finalized
 
 # Create eigensolver
 eigensolver = dolfinx.nls.petsc.SLEPcEigenSolver(A)
@@ -93,7 +80,7 @@ for i in range(n):
 
     # Initialize function and assign eigenvector
     u = fem.Function(V)
-    u.vector()[:] = rx
+    u.vector().setArray(rx)  # Assign the real part of the eigenvector
 
     # Visualize eigenfunction (simple plot or save to file)
     # Example: Save solution to VTK
