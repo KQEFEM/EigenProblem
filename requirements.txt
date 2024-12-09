@@ -9,9 +9,9 @@ scikit-learn
 scikit-fem[all]
 
 #meshing packages
-gmsh-sdk
+#gmsh-sdk
 meshio
-mshr
+
 
 # Data analysis and manipulation
 pandas
@@ -28,6 +28,11 @@ ipython
 
  # Multi-processing 
  mpi4py
+
+ # Solvers
+ petsc
+ petsc4py
+ ufl
 
  # System packages (install via system package manager)
 # Ubuntu: sudo apt install build-essential 
