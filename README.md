@@ -32,7 +32,8 @@ To run this code use the main.py file and change the parameters are your leisure
 - **pyvista (Optional)**: For visualizing the solution.
 - **mpi4py**: For parallel computing support.
 
-
+## To be Done
+We can introduce new domains, and boundary conditions. 
 
 ## Tutorial Waveguide
 https://docs.fenicsproject.org/dolfinx/main/python/demos/demo_half_loaded_waveguide.html
