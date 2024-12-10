@@ -9,8 +9,9 @@ scikit-learn
 scikit-fem[all]
 
 #meshing packages
-gmsh-sdk
+#gmsh-sdk
 meshio
+
 
 # Data analysis and manipulation
 pandas
@@ -27,3 +28,15 @@ ipython
 
  # Multi-processing 
  mpi4py
+
+ # Solvers
+ petsc
+ petsc4py
+ ufl
+ slepc4py # needed for eigensolver
+
+ # System packages (install via system package manager)
+# Ubuntu: sudo apt install build-essential 
+ # Fedora: sudo dnf install gcc gcc-c++ 
+ # macOS: brew install
+ # PETSc: Follow the instructions to compile with --with-scalar-type=complex
