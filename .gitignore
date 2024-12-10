@@ -1,4 +1,5 @@
 #meshes/
 data/
 *.pkl
-
+__pycache__/
+*.pyc
