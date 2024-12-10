@@ -14,6 +14,9 @@ $$
 
 Currently this code only runs for a cube and dirichlet BCs but can be extended. 
 
+## Running
+To run this code use the main.py file and change the parameters are your leisure.
+
 ## Features
 - **Finite Element Mesh Generation**: Supports different domain types, such as `cube` and `rectangle`.
 - **Eigenvalue Problem Solver**: Uses SLEPc (a suite for solving eigenvalue problems) to compute eigenvalues of the system.
