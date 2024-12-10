@@ -5,7 +5,13 @@
     "context": ".."
   },
   "settings": {
-    "terminal.integrated.shell.linux": "/bin/bash"
+    "terminal.integrated.shell.linux": "/bin/bash",
+    "remote.extensionKind": {
+      "ms-python.python": "ui",
+      "ms-vscode.cpptools": "ui",
+      "ms-toolsai.jupyter": "ui"
+    },
+    "remote.userDataDir": "/root/.vscode-server"
   },
   "extensions": [
     "ms-python.python",
@@ -13,7 +19,8 @@
     "ms-toolsai.jupyter"
   ],
   "mounts": [
-    "source=${localWorkspaceFolder}/,target=/opt/app,type=bind"
+    "source=${localWorkspaceFolder}/,target=/opt/app,type=bind",
+    "source=${env:HOME}/.vscode/extensions,target=/root/.vscode-server/extensions,type=bind"
   ],
   "postCreateCommand": "echo 'Debug: Start' && echo '' && echo 'To activate the FEniCS environment, run: conda activate fenics' && echo '' && echo 'Debug: End'"
 }
