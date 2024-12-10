@@ -13,8 +13,6 @@ import dolfinx.fem.petsc as fem_petsc
 import numpy as np
 import ufl as ufl
 from dolfinx import fem
-
-#
 from dolfinx.mesh import CellType, create_box
 from mpi4py import MPI
 
@@ -31,53 +29,16 @@ try:
 except ModuleNotFoundError:
     print("slepc4py is required for this demo")
     exit(0)
-# assert (
-#     np.dtype(PETSc.ScalarType).kind == "c"
-# ), "PETSc is not configured for complex numbers."
 
 
 class FENicSEigenProblem:
     """
-    Solving the Membrane equation with BC to be considered:
-
-    \nabla w = -p/(\sigma_0 h)
-    w = displacement
-    sigma_0 = prestressc
-    h + thickness
-
-    Then the billinear form becomes:
-    a(w, v) = -\int_{\Omega} \nabla w \cdot \nabla v dx
-    L(v) = -\int_{\Omega} p/(\sigma_0 h) v dx
-
-     Parameters:
-        num_nodes (int): The number of nodes in the mask. Default is 100.
-        experiment_type (str): The type of experiment to be conducted.
-        domain_type (str): The type of domain.
-        test_problem (bool): Whether to run the test problem when the code has been changed. If selected then all values are set for you. Default is False.
-        test_mode (bool): Only for testing purposes in pytest. Default is False.
+    This solves for the eigenvalues of the maxwell problem \nabla \times \nabla \times E = \omega^2 \varepsilon \mu E for the BC of \nabla \times E = 0.
 
     Running the code on MACOS:
         Docker command to start fenics
         docker run -ti -v $(pwd):/home/fenics/shared -w /home/fenics/shared quay.io/fenicsproject/stable:current
 
-
-    To test the function on a known solution, you can compute the relative error in the following:
-    # Create a triangulation object
-    triangulation = tri.Triangulation(nodes[:, 0], nodes[:, 1])
-
-    # Create a pseudocolor plot of the solution
-    plt.figure(figsize=(10, 10))
-    plt.tripcolor(triangulation, sol)
-    plt.colorbar(label='Solution')
-    plt.title('2D Solution')
-    plt.show()
-
-    exact_solution_func = lambda x, y: np.sin(x) * np.sin(y)
-    exact_solution = exact_solution_func(
-        nodes[:, 0], nodes[:, 1]
-    )
-
-    np.linalg.norm(sol - exact_solution) / np.linalg.norm(exact_solution)
     """
 
     def __init__(
@@ -86,44 +47,42 @@ class FENicSEigenProblem:
         domain_type: str = "cube",
         test_problem: bool = False,
         test_mode: bool = False,
-        num_eigenvalues = 10,
+        num_eigenvalues=10,
     ):
-        self.test_mode = test_mode  # Only for testing purposes in pytest
-        self.mesh = None
-        self.domain_type = domain_type
-        self.domain = []
-        self.experiment_name = None
-        self.subfolder_name = None
+        """
+
+          Args:
+            num_nodes (int): Number of nodes for mesh generation (default: 100).
+            domain_type (str): Type of domain (e.g., 'cube', 'rectangle').
+            test_problem (bool): Run a predefined test problem (default: False).
+            test_mode (bool): Enable testing mode for pytest (default: False).
+            num_eigenvalues (int): Number of eigenvalues to compute (default: 10).
+      
+        """
         self.num_nodes = num_nodes
-        self.script_dir = os.path.dirname(os.path.realpath(__file__))
-        self.V = None  # Function space
-        self.u = None  # Trial function
-        self.v = None  # Test function
-        self.bc = None  # B oundary condition #! Only Dirichlet implemented
-        self.RHS = None  # Right-hand side
-        self.boundary_function = (
-            BoundaryFunction()
-        )  # ? Needs extending and understanding
-        self.boundary_def = None
+        self.domain_type = domain_type
         self.test_problem = test_problem
-        self.tol = 1e-9
+        self.test_mode = test_mode
         self.num_eigenvalues = num_eigenvalues
 
-    # def set_experiment_parameters(self):
-    #     """Sets up the experiment"""
-    #     if self.test_problem:
-    #         self.experiment_name = "Test_problem".lower()
-    #         self.subfolder_name = "test_problem"
-    #         self.set_test_parameters()
-    #         self.RHS_test_problem()
-    #         warn("Test problem selected. No parameters set.")
-    #     return self.experiment_name, self.subfolder_name
+        # Set default tolerances and placeholders for FEniCS objects
+        self.tol = 1e-9
+        self.mesh = None
+        self.V = None
+        self.u = None
+        self.v = None
+        self.bc = None
+        self.RHS = None
 
-    # def set_test_parameters(self):
-    #     """Simple exact example for u(x,y) = sin(x)sin(y)"""
-    #     self.domain = [2 * np.pi, 2 * np.pi]  # unit square
-    #     self.area = self.domain[0] * self.domain[1]
-    #     self.domain_type = "cube"  # forces unit square
+        # Initialize domain and boundary settings
+        self.domain = []
+        self.boundary_function = BoundaryFunction()
+        self.boundary_def = None
+
+        # Experiment-related metadata
+        self.experiment_name = None
+        self.subfolder_name = None
+        self.script_dir = os.path.dirname(os.path.realpath(__file__))
 
     def set_constants(self):
         self.frequency = fem.Constant(self.mesh, 1.0)  # omega = 0 for unexcited system
@@ -214,9 +173,7 @@ class FENicSEigenProblem:
         self.eps.setOperators(A)  # Set the operators for the eigenvalue problem
         """ If the matrices in the problem have known properties (e.g. hermiticity) we can use this information in SLEPc to accelerate the calculation with the setProblemType function. For this problem, there is no property that can be exploited, and therefore we define it as a generalized non-Hermitian eigenvalue problem with the SLEPc.EPS.ProblemType.GNHEP object """
         self.eps.setProblemType(SLEPc.EPS.ProblemType.GNHEP)
-         
-       
-        
+
         """ Specify the number of eigenvalues to compute
         eps.setDimensions(nev=10, ncv=20, mpd=15)
         mpd (Maximum Projected Dimension): The maximum size of the search subspace. mpd should be less than or equal to ncv.
@@ -269,7 +226,9 @@ class FENicSEigenProblem:
         eigenvalues = [(val.real, val.imag) for _, val in self.vals]
 
         # Save eigenvalues to a .pkl file
-        eigenvalues_filename = os.path.join(self.script_dir, "data/eigenvalues_n" + str(self.num_eigenvalues) +".pkl")
+        eigenvalues_filename = os.path.join(
+            self.script_dir, "data/eigenvalues_n" + str(self.num_eigenvalues) + ".pkl"
+        )
         # Ensure the directory exists
         os.makedirs(os.path.dirname(eigenvalues_filename), exist_ok=True)
 
@@ -277,26 +236,6 @@ class FENicSEigenProblem:
             pickle.dump(eigenvalues, f)
 
         print(f"Eigenvalues saved to: {eigenvalues_filename}")
-        # List to store kz values
-        # kz_list = []
-
-        # for i, kz in self.vals:
-        #     # Save eigenvector in eh
-        #     self.eps.getEigenpair(i, eh.vector)
-
-        #     # Compute error for i-th eigenvalue
-        #     error = eps.computeError(i, PETSc.EPS.ErrorType.RELATIVE)
-
-        #     # Verify and save solution
-        #     if error < tol and np.isclose(kz.imag, 0, atol=tol):
-        #         kz_list.append(kz)
-
-        #         # # Verify if kz is consistent with the analytical equations
-        #         # assert verify_mode(kz, w, h, d, lmbd0, eps_d, eps_v, threshold=1e-4)
-
-        #         print(f"eigenvalue: {-kz**2}")
-        #         print(f"kz: {kz}")
-        #         print(f"kz/k0: {kz / k0}")
 
     def run(self):
         self.create_mesh_and_function_space()
@@ -319,13 +258,13 @@ class BoundaryFunction:
 
 
 def main():
-    membrane_deformation = FENicSEigenProblem(
+    eigen_problem = FENicSEigenProblem(
         num_nodes=10,
         domain_type="cube",
         test_mode=False,
     )
 
-    membrane_deformation.run()
+    eigen_problem.run()
 
 
 def test():
@@ -339,13 +278,13 @@ def test():
         time.sleep(5)
 
     """ Cube """
-    membrane_deformation = FENicSEigenProblem(
+    eigen_problem = FENicSEigenProblem(
         num_nodes=1000,
         domain_type="cube",
         test_mode=True,
     )
 
-    membrane_deformation.run()
+    eigen_problem.run()
 
 
 def handler(signum, frame):
