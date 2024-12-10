@@ -26,10 +26,8 @@ If you want to then run it only in the terminal use
 ```bash 
 ./run.sh run
 ```
+If you are using VS Code, you could alternatively open the `devcontainer.json` by using `Remote: Reopen in Container`.
 
-If you are using vs code you could alternatively open the _devcontainer.json_ by using _Remote: Reopen in Container_. This then opens vs code as normal. 
-
-*Note: you should use the environment fenics as all the requirements are installed there.*
 
 
 
