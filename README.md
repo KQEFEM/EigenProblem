@@ -22,7 +22,7 @@ Currently this code only runs for a cube and dirichlet BCs but can be extended.
 - **Flexible Mesh Resolution**: Allows users to specify the number of nodes in the mesh and domain size.
 
 ## Requirements
-- **Python 3.x**
+- **Python 3.9**
 - **FEniCS**: For the finite element method (FEM) solver.
 - **SLEPc**: For solving eigenvalue problems.
 - **PETSc**: A toolkit for efficient numerical computation, used by FEniCS for matrix operations.
