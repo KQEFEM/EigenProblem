@@ -15,7 +15,7 @@ $$
 Currently this code only runs for a cube and dirichlet BCs but can be extended. 
 
 ## Running
-To run this code use the main.py file and change the parameters are your leisure.
+To run this code use the main.py file and change the parameters are your leisure. The eigenvalues are saved in a pickle file in the folder 'data' locally.
 
 ## Features
 - **Finite Element Mesh Generation**: Supports different domain types, such as `cube` and `rectangle`.
