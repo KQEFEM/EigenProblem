@@ -352,4 +352,14 @@ if __name__ == "__main__":
     #             print(f"Unknown function: {user_input}")
     #     except Exception:
     #         print("No input received in 90 seconds.")
-    test()
+    # test() #? THis is not set up to do any tests yet but only runs the main function
+    
+    eigen_problem = FENicSEigenProblem(
+        num_nodes=50,
+        domain_type="cube",
+        test_mode=False,
+        num_eigenvalues=25
+    )
+    
+    eigen_problem.run()
+
