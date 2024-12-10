@@ -9,10 +9,10 @@ $$
 with Dirichlet boundary conditions:
 
 $$
-\nabla \times E = 0
+\nabla \times E = 0.
 $$
 
-.
+Currently this code only runs for a cube and dirichlet BCs but can be extended. 
 
 ## Features
 - **Finite Element Mesh Generation**: Supports different domain types, such as `cube` and `rectangle`.
