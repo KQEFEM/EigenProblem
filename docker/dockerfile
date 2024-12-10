@@ -15,22 +15,31 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     && apt-get clean
 
-# Install the FEniCS environment using mamba
+# Install the FEniCS environment using mamba (run as root)
 RUN mamba create -n fenics python=3.9 && \
     mamba install -c conda-forge fenics-dolfinx mpich && \
     mamba clean -a -y
 
-# Set the working directory to /opt/app
+# Create a non-root user for running the container
+RUN useradd -m -s /bin/bash myuser
+
+# Change the ownership of /opt/conda (or wherever your environment was installed) to myuser
+RUN chown -R myuser:myuser /opt/conda
+
+# Switch to the non-root user
+USER myuser
+
+
+
+# Set the working directory
 WORKDIR /opt/app
 
-# Copy the requirements.txt file into the container's /opt/app directory
-COPY requirements.txt /opt/app/requirements.txt
-
-# Use mamba to install Python dependencies from the requirements.txt file
+# Copy the requirements.txt and install dependencies (still using the non-root user)
+COPY --chown=myuser:myuser requirements.txt /opt/app/requirements.txt
 RUN mamba install --yes --file /opt/app/requirements.txt
 
-# Copy the rest of the application files into the container's /opt/app directory
-COPY . /opt/app/
+# Copy the rest of the app (with the proper ownership)
+COPY --chown=myuser:myuser . /opt/app/
 
-# Set the default command for the container (to run the shell)
+# Set default command for the container
 CMD ["/bin/bash"]
