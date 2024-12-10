@@ -87,6 +87,9 @@ class FENicSEigenProblem:
         self.experiment_name = None
         self.subfolder_name = None
         self.script_dir = os.path.dirname(os.path.realpath(__file__))
+        self.workspace = os.path.join(
+            self.script_dir.split("EigenProblem")[0], "EigenProblem"
+        )
 
     def set_constants(self):
         """
@@ -266,7 +269,7 @@ class FENicSEigenProblem:
 
         # Save eigenvalues to a .pkl file
         eigenvalues_filename = os.path.join(
-            self.script_dir, "data/eigenvalues_n" + str(self.num_eigenvalues) + ".pkl"
+            self.workspace, "data/eigenvalues_n" + str(self.num_eigenvalues) + ".pkl"
         )
         # Ensure the directory exists
         os.makedirs(os.path.dirname(eigenvalues_filename), exist_ok=True)
@@ -353,13 +356,9 @@ if __name__ == "__main__":
     #     except Exception:
     #         print("No input received in 90 seconds.")
     # test() #? THis is not set up to do any tests yet but only runs the main function
-    
-    eigen_problem = FENicSEigenProblem(
-        num_nodes=50,
-        domain_type="cube",
-        test_mode=False,
-        num_eigenvalues=25
-    )
-    
-    eigen_problem.run()
 
+    eigen_problem = FENicSEigenProblem(
+        num_nodes=50, domain_type="cube", test_mode=False, num_eigenvalues=25
+    )
+
+    eigen_problem.run()
