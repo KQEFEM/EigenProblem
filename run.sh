@@ -17,13 +17,11 @@ build_image() {
     docker build -t $IMAGE_NAME -f $DOCKERFILE_DIR/Dockerfile .
 }
 
-
 # Function to run the container in the current workspace
 run_container() {
     echo "Starting the Docker container in the current workspace..."
     docker run -it --name $CONTAINER_NAME -v $(pwd):/workspace -w /workspace $IMAGE_NAME
 }
-
 
 # Function to restart a stopped container
 restart_container() {
@@ -67,6 +65,26 @@ delete_image_container() {
     docker rmi -f $IMAGE_NAME
 }
 
+# Function to update the Docker image if needed
+update_image() {
+    echo "Checking for updates to the Docker image..."
+
+    # Try pulling the latest image from the registry
+    docker pull $IMAGE_NAME
+
+    # Check if the pull was successful by comparing image IDs
+    local_image_id=$(docker images -q $IMAGE_NAME)
+    remote_image_id=$(docker inspect --format '{{.Id}}' $IMAGE_NAME)
+
+    if [ "$local_image_id" != "$remote_image_id" ]; then
+        echo "Remote image is newer. Rebuilding locally..."
+        build_image  # Rebuild the image if the local one is outdated
+    else
+        echo "Docker image is already up-to-date."
+    fi
+}
+
+
 # Help menu
 help_menu() {
     echo "Usage: ./run.sh [command]"
@@ -79,6 +97,7 @@ help_menu() {
     echo "  list                       - List all Docker containers"
     echo "  close_all                  - Stop and remove all Docker containers"
     echo "  delete_image_container - Delete both the container and the image"
+    echo "  update                     - Update the Docker image (if needed)"
     echo "  help                       - Display this help menu"
 }
 
@@ -92,5 +111,6 @@ case $1 in
     list) list_containers ;;
     close_all) close_all_containers ;;
     delete_image_container) delete_image_container ;;
+    update) update_image ;;
     help | *) help_menu ;;
 esac
