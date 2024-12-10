@@ -17,6 +17,22 @@ Currently this code only runs for a cube and dirichlet BCs but can be extended.
 ## Running
 To run this code use the main.py file and change the parameters are your leisure. The eigenvalues are saved in a pickle file in the folder 'data' locally.
 
+Alternatively, use the following:
+```bash
+./run.sh build
+```
+If you want to then run it only in the terminal use 
+
+```bash 
+./run.sh run
+```
+
+If you are using vs code you could alternatively open the _devcontainer.json_ by using _Remote: Reopen in Container_. This then opens vs code as normal. 
+
+*Note: you should use the environment fenics as all the requirements are installed there.*
+
+
+
 ## Features
 - **Finite Element Mesh Generation**: Supports different domain types, such as `cube` and `rectangle`.
 - **Eigenvalue Problem Solver**: Uses SLEPc (a suite for solving eigenvalue problems) to compute eigenvalues of the system.
