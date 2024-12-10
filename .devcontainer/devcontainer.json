@@ -1,9 +1,8 @@
 {
-  "name": "FEniCS Container",
+  "name": "FEniCS Development Container",
   "build": {
-    "dockerfile": "../docker/Dockerfile",  // Adjusted the path to the Dockerfile
-    "context": "..",
-    "args": {}
+    "dockerfile": "../docker/Dockerfile",
+    "context": ".."
   },
   "settings": {
     "terminal.integrated.shell.linux": "/bin/bash"
@@ -13,9 +12,8 @@
     "ms-vscode.cpptools",
     "ms-toolsai.jupyter"
   ],
-"postCreateCommand": "echo 'Debug: Start' && mamba activate fenics && echo 'Debug: End'"
-  "remoteUser": "root",
   "mounts": [
     "source=${localWorkspaceFolder}/,target=/opt/app,type=bind"
-  ]
+  ],
+  "postCreateCommand": "echo 'Debug: Start' && echo '' && echo 'To activate the FEniCS environment, run: conda activate fenics' && echo '' && echo 'Debug: End'"
 }
