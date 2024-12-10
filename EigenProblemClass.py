@@ -2,13 +2,14 @@
 This is for solving mask deformation problems using FEniCS (FEM).
 """
 
-import datetime
 import os
-import shutil
-import time
-from logging import warn
 
 # from dolfinx.fem import FunctionSpace, dirichletbc, Constant, locate_dofs_topological, TrialFunction, TestFunction# import mshr  # package in fenics
+import pickle
+import shutil
+import time
+
+import dolfinx.fem.petsc as fem_petsc
 import numpy as np
 import ufl as ufl
 from dolfinx import fem
@@ -16,8 +17,20 @@ from dolfinx import fem
 #
 from dolfinx.mesh import CellType, create_box
 from mpi4py import MPI
-from slepc4py import SLEPc
 
+try:
+    import pyvista
+
+    have_pyvista = True
+except ModuleNotFoundError:
+    print("pyvista and pyvistaqt are required to visualise the solution")
+    have_pyvista = False
+
+try:
+    from slepc4py import SLEPc
+except ModuleNotFoundError:
+    print("slepc4py is required for this demo")
+    exit(0)
 # assert (
 #     np.dtype(PETSc.ScalarType).kind == "c"
 # ), "PETSc is not configured for complex numbers."
@@ -73,6 +86,7 @@ class FENicSEigenProblem:
         domain_type: str = "cube",
         test_problem: bool = False,
         test_mode: bool = False,
+        num_eigenvalues = 10,
     ):
         self.test_mode = test_mode  # Only for testing purposes in pytest
         self.mesh = None
@@ -92,50 +106,29 @@ class FENicSEigenProblem:
         )  # ? Needs extending and understanding
         self.boundary_def = None
         self.test_problem = test_problem
+        self.tol = 1e-9
+        self.num_eigenvalues = num_eigenvalues
 
-    def set_experiment_parameters(self):
-        """Sets up the experiment"""
-        if self.test_problem:
-            self.experiment_name = "Test_problem".lower()
-            self.subfolder_name = "test_problem"
-            self.set_test_parameters()
-            self.RHS_test_problem()
-            warn("Test problem selected. No parameters set.")
-        return self.experiment_name, self.subfolder_name
+    # def set_experiment_parameters(self):
+    #     """Sets up the experiment"""
+    #     if self.test_problem:
+    #         self.experiment_name = "Test_problem".lower()
+    #         self.subfolder_name = "test_problem"
+    #         self.set_test_parameters()
+    #         self.RHS_test_problem()
+    #         warn("Test problem selected. No parameters set.")
+    #     return self.experiment_name, self.subfolder_name
 
-    def set_test_parameters(self):
-        """Simple exact example for u(x,y) = sin(x)sin(y)"""
-        self.domain = [2 * np.pi, 2 * np.pi]  # unit square
-        self.area = self.domain[0] * self.domain[1]
-        self.domain_type = "cube"  # forces unit square
+    # def set_test_parameters(self):
+    #     """Simple exact example for u(x,y) = sin(x)sin(y)"""
+    #     self.domain = [2 * np.pi, 2 * np.pi]  # unit square
+    #     self.area = self.domain[0] * self.domain[1]
+    #     self.domain_type = "cube"  # forces unit square
 
-    def set_aluminum_parameters(self):
-        """Billy's experiment during his phd"""
-        self.domain = [1, 1]
-        self.area = self.domain[0] * self.domain[1]
-        self.pressures = np.array([101325 * self.area])
-        self.thickness = np.array([2.54e-2])
-        self.Youngs_Mod = 70e9
-        self.Poisson = 0.3
-        self.deflection_curve = (
-            self.Youngs_Mod * self.thickness**3 / (12 * (1 - self.Poisson**2))
-        )
-
-    def set_mm_33_26_parameters(self):
-        self.domain = np.array([26e-3, 33e-3])  # set from the origin
-        self.area = self.domain[0] * self.domain[1]
-        self.thickness = np.array([20e-9])
-        self.Youngs_Mod = 166e9
-        self.Poisson = 0.23
-        self.pressures = self.force_in_newtons / (33e-3 * 26e-3)
-
-    def set_mm_2_2_parameters(self):
-        self.domain = np.array([2e-3, 2e-3])
-        self.area = self.domain[0] * self.domain[1]
-        self.thickness = np.array([20e-9])
-        self.Youngs_Mod = 166e9
-        self.Poisson = 0.23
-        self.pressures = self.force_in_newtons / (33e-3 * 26e-3)
+    def set_constants(self):
+        self.frequency = fem.Constant(self.mesh, 1.0)  # omega = 0 for unexcited system
+        self.permittivity = fem.Constant(self.mesh, 1.0)  # epsilon
+        self.permeability = fem.Constant(self.mesh, 1.0)  # mu
 
     def create_mesh_and_function_space(self):
         """Creates the mesh for the problem. This is either a rectangle or a circle."""
@@ -181,18 +174,9 @@ class FENicSEigenProblem:
         """
         self.rhs_func = -fem.Expression("-2*sin(x[0])*sin(x[1])", degree=1)
 
-    def compute_bilinear_form(self):
-        """Computes the bilinear form for the problem."""
-        self.RHS = (
-            self.rhs_func * self.v * fem.dx
-        )  # Note \Delta u = -f in the Poisson equation
-        self.LHS = -fem.inner(fem.grad(self.w), fem.grad(self.v)) * fem.dx
-
     def weak_form(self):
         """Computes the weak form of the problem."""
-        self.frequency = fem.Constant(self.mesh, 1.0)  # omega = 0 for unexcited system
-        self.permittivity = fem.Constant(self.mesh, 1.0)  # epsilon
-        self.permeability = fem.Constant(self.mesh, 1.0)  # mu
+
         curl_curl = ufl.dot(ufl.curl(self.u), ufl.curl(self.v)) * ufl.dx
         mass = (
             self.frequency**2
@@ -204,8 +188,10 @@ class FENicSEigenProblem:
         self.LHS = curl_curl + mass
         self.RHS = 0
 
-    def boundary_condition(self):  #
-        """Create a Dirichlet boundary condition on the entire boundary. Parameters: V: FunctionSpace - The function space to apply the boundary condition to. value: float - The value of the Dirichlet condition (default is 0.0). Returns: bc: DirichletBC - The boundary condition."""
+    def boundary_condition(self):
+        """Create a Dirichlet boundary condition on the entire boundary.
+        Parameters: V: FunctionSpace - The function space to apply the boundary condition to. value: float - The value of the Dirichlet condition (default is 0.0).
+        Returns: bc: DirichletBC - The boundary condition."""
         # Define the value of the boundary condition
         value = 0.0
         u_D = fem.Constant(self.V.mesh, value)
@@ -214,53 +200,46 @@ class FENicSEigenProblem:
             self.V, lambda x: np.full(x.shape[1], True)
         )
         # Create the boundary condition
-        self.bc = fem.dirichletbc(u_D, boundary_dofs, self.V)
+        self.bc = [fem.dirichletbc(u_D, boundary_dofs, self.V)]  # Wrap in list
 
     def solve_eigenvalue_problem(self):
         """Solves the eigenvalue problem for the bilinear form using SLEPc."""
         # Create a solution function in the function space
         self.solution = fem.Function(self.V)
 
-        # Define the bilinear form (A) and mass matrix (B), assuming B is identity here
-        A = ufl.lhs(self.LHS)  # Stiffness matrix (bilinear form)
-        B = ufl.Identity(
-            self.V.dofmap().size()
-        )  # Mass matrix (identity for standard eigenvalue problems)
+        # Define the bilinear form
+        A = fem_petsc.assemble_matrix(fem.form(self.LHS), bcs=self.bc)
+        A.assemble()
+        self.eps = SLEPc.EPS().create(self.mesh.comm)  # This represents the solver
+        self.eps.setOperators(A)  # Set the operators for the eigenvalue problem
+        """ If the matrices in the problem have known properties (e.g. hermiticity) we can use this information in SLEPc to accelerate the calculation with the setProblemType function. For this problem, there is no property that can be exploited, and therefore we define it as a generalized non-Hermitian eigenvalue problem with the SLEPc.EPS.ProblemType.GNHEP object """
+        self.eps.setProblemType(SLEPc.EPS.ProblemType.GNHEP)
+         
+       
+        
+        """ Specify the number of eigenvalues to compute
+        eps.setDimensions(nev=10, ncv=20, mpd=15)
+        mpd (Maximum Projected Dimension): The maximum size of the search subspace. mpd should be less than or equal to ncv.
+        ncv (Number of Converged Values): The number of basis vectors in the eigenspace. ncv should be greater than nev.
+        """
+        self.eps.setDimensions(nev=self.num_eigenvalues)  # Request 10 eigenvalues
 
-        # Mass matrix (identity for standard eigenvalue problems)
+        self.eps.setTolerances(tol=self.tol)
 
-        # Convert UFL expressions to matrices (PETSc)
-        A_pet = fem.assemble_matrix(A, self.bc)
-        B_pet = fem.assemble_matrix(B, self.bc)
-
-        # Convert the matrices to PETSc format
-        A_pet.assemble()
-        B_pet.assemble()
-
-        # Setup the eigenvalue problem: A u = λ B u
-        eig_problem = SLEPc.EPS().create()  # Eigenvalue problem solver (SLEPc)
-        eig_problem.setOperators(A_pet, B_pet)  # Set A and B matrices
-        eig_problem.setProblemType(
-            SLEPc.EPS.ProblemType.GHEP
-        )  # Generalized Hermitian Eigenvalue Problem
-        eig_problem.setWhichEigenpairs(
-            SLEPc.EPS.Which.SMALLEST
-        )  # Solve for smallest eigenvalues
+        # Set the eigensolver. This is taken from the tutorial: https://docs.fenicsproject.org/dolfinx/main/python/demos/demo_half_loaded_waveguide.html
+        # See https://slepc.upv.es/documentation/slepc.pdf for more information on SLEPc
+        self.eps.setType(SLEPc.EPS.Type.KRYLOVSCHUR)
 
         # Solve the eigenvalue problem
-        eig_problem.solve()
+        self.eps.solve()
+        self.eps.view()
 
-        # Get the number of converged eigenvalues
-        num_eigenvalues = eig_problem.getConverged()
+        # Get number of converged eigenvalues
+        nconv = self.eps.getConverged()
+        print(f"Number of converged eigenvalues: {nconv}")
 
-        # Print eigenvalues and eigenvectors (eigenfunctions in FEM)
-        for i in range(num_eigenvalues):
-            eigenvalue = eig_problem.getEigenvalue(i)
-            eigenvector = eig_problem.getEigenvector(i)
-            print(f"Eigenvalue {i}: {eigenvalue}")
-            print(f"Eigenvector {i}: {eigenvector}")
-
-        print("done")
+        # Get the eigenvalues and eigenvectors
+        # print("done")
 
     def solve_problem(self):
         """Solves the bilinear form."""
@@ -276,59 +255,59 @@ class FENicSEigenProblem:
 
         print("solved")
 
-    def save_solution(self):
-        """Saves the pvd and vtu files in the appropriate directory."""
-        if self.test_mode:
-            output_dir_test = os.path.join(
-                os.path.dirname(os.path.realpath(__file__)), "test_run"
-            )
-            print(f"The test file is saved {output_dir_test}")
-            # Create the directory if it doesn't exist
-            os.makedirs(output_dir_test, exist_ok=True)
+    def save_eigenproblem(self):
+        # Save the eigenvalues to a .pkl file
+        self.vals = [
+            (i, np.sqrt(-self.eps.getEigenvalue(i)))
+            for i in range(self.eps.getConverged())
+        ]
 
-            # Create a File object for output
-            out_file = fem.File(
-                os.path.join(
-                    output_dir_test, f"{self.experiment_name.lower()}_results.pvd"
-                )
-            )
+        # Sort kz by real part
+        self.vals.sort(key=lambda x: x[1].real)
 
-            # Save the solution
-            out_file << self.w
-        else:
-            now = datetime.datetime.now()
-            date_string = now.strftime("%Y-%m-%d_%H-%M-%S")
-            # Create the subfolder if it doesn't exist
-            self.subfolder = f"{self.experiment_type}_thick_{str(self.thickness[0]).replace('.', '_')}/fracture_{str(self.prestress).replace('.', '_')}/{self.domain_type}"  # Create the subfolder if it doesn't exist            os.makedirs(os.path.join(self.script_dir, self.subfolder), exist_ok=True)
-            fem.File(
-                f"{self.subfolder}/membrane_displacement_{self.best_worst_bool}.pvd"
-            )
+        # List to store eigenvalues (real part only for simplicity)
+        eigenvalues = [(val.real, val.imag) for _, val in self.vals]
 
-            if self.domain_type == "circle":
-                filename2 = os.path.join(
-                    self.script_dir,
-                    self.subfolder,
-                    f"{date_string}_BW_{self.best_worst_bool}_radius_{self.domain[0]}_{self.num_nodes}_solution_displacement.pvd",
-                )
-            else:
-                filename2 = os.path.join(
-                    self.script_dir,
-                    self.subfolder,
-                    f"{date_string}_BW_{self.best_worst_bool}_domain_{self.domain[0]}_{self.domain[1]}_{self.num_nodes}_solution_displacement.pvd",
-                )
-            vtkfile2 = fem.File(filename2)
-            vtkfile2 << self.w
+        # Save eigenvalues to a .pkl file
+        eigenvalues_filename = os.path.join(self.script_dir, "data/eigenvalues_n" + str(self.num_eigenvalues) +".pkl")
+        # Ensure the directory exists
+        os.makedirs(os.path.dirname(eigenvalues_filename), exist_ok=True)
 
-            print(f"Solution displacement saved to: {filename2}")
-            print("Solution displacement vector:", self.w.vector().get_local())
+        with open(eigenvalues_filename, "wb") as f:
+            pickle.dump(eigenvalues, f)
+
+        print(f"Eigenvalues saved to: {eigenvalues_filename}")
+        # List to store kz values
+        # kz_list = []
+
+        # for i, kz in self.vals:
+        #     # Save eigenvector in eh
+        #     self.eps.getEigenpair(i, eh.vector)
+
+        #     # Compute error for i-th eigenvalue
+        #     error = eps.computeError(i, PETSc.EPS.ErrorType.RELATIVE)
+
+        #     # Verify and save solution
+        #     if error < tol and np.isclose(kz.imag, 0, atol=tol):
+        #         kz_list.append(kz)
+
+        #         # # Verify if kz is consistent with the analytical equations
+        #         # assert verify_mode(kz, w, h, d, lmbd0, eps_d, eps_v, threshold=1e-4)
+
+        #         print(f"eigenvalue: {-kz**2}")
+        #         print(f"kz: {kz}")
+        #         print(f"kz/k0: {kz / k0}")
 
     def run(self):
         self.create_mesh_and_function_space()
         print("\n\n Computed mesh and function space \n\n ")
+        self.set_constants()
         self.weak_form()
+        self.boundary_condition()
         self.solve_eigenvalue_problem()
-        self.solve_problem()
-        self.save_solution()
+        self.save_eigenproblem()
+        # self.solve_problem()
+        # self.save_solution()
 
 
 class BoundaryFunction:
