@@ -25,8 +25,9 @@ To run this code use the main.py file and change the parameters are your leisure
 - **Flexible Mesh Resolution**: Allows users to specify the number of nodes in the mesh and domain size.
 
 ## Requirements
+These are provided in the requirements.txt (except for fenicsx) on the linux subsystem. (mamba create -n <env_name> --file requirements.txt)
 - **Python 3.9**
-- **FEniCS**: For the finite element method (FEM) solver.
+- **FEniCS**: For the finite element method (FEM) solver. See [here](https://fenicsproject.org/download/) for installation instructions (recommend using mamba for speed).
 - **SLEPc**: For solving eigenvalue problems.
 - **PETSc**: A toolkit for efficient numerical computation, used by FEniCS for matrix operations.
 - **pyvista (Optional)**: For visualizing the solution.
