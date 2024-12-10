@@ -1,0 +1,17 @@
+# Use an official lightweight Linux image with Python
+FROM condaforge/mambaforge:latest
+
+# Set environment variables to avoid interactive prompts during installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Create and activate the environment during container runtime.
+# This is for mac and linux 
+RUN mamba create -n fenics python=3.9 && \
+    mamba install -c conda-forge fenics-dolfinx mpich pyvista && \ 
+    mamba clean -a -y
+
+# Activate the environment by default
+SHELL ["conda", "run", "-n", "fenics", "/bin/bash", "-c"]
+
+# Optional: Set the environment as the default command
+CMD ["bash"]
