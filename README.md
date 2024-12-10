@@ -35,3 +35,9 @@ Currently this code only runs for a cube and dirichlet BCs but can be extended.
 https://docs.fenicsproject.org/dolfinx/main/python/demos/demo_half_loaded_waveguide.html
 
 https://bleyerj.github.io/comet-fenicsx/intro/hyperelasticity/hyperelasticity.html
+
+## License
+
+This project is licensed under the [Creative Commons Attribution-NonCommercial 4.0 International License (CC BY-NC 4.0)](https://creativecommons.org/licenses/by-nc/4.0/).
+
+You are free to share and adapt the material, provided you give appropriate credit and do not use it for commercial purposes.
