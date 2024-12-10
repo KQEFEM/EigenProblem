@@ -3,10 +3,10 @@ numpy
 scipy
 
 # Machine learning library
-scikit-learn
+# scikit-learn # this isn't needed but could be a useful 
 
 # Finite Element Method library
-scikit-fem[all]
+# scikit-fem[all] # this isn't needed but could be a useful alternative. 
 
 #meshing packages
 #gmsh-sdk
@@ -32,7 +32,7 @@ ipython
  # Solvers
  petsc
  petsc4py
- ufl
+ #ufl
  slepc4py # needed for eigensolver
 
  # System packages (install via system package manager)
