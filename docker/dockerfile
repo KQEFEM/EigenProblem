@@ -1,17 +1,36 @@
-# Use an official lightweight Linux image with Python
 FROM condaforge/mambaforge:latest
 
 # Set environment variables to avoid interactive prompts during installation
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Create and activate the environment during container runtime.
-# This is for mac and linux 
+# Install system dependencies needed for PETSc and other packages
+RUN apt-get update && apt-get install -y \
+    libblas-dev \
+    liblapack-dev \
+    libopenblas-dev \
+    libmpich-dev \
+    gfortran \
+    wget \
+    unzip \
+    build-essential \
+    && apt-get clean
+
+# Install the FEniCS environment using mamba
 RUN mamba create -n fenics python=3.9 && \
-    mamba install -c conda-forge fenics-dolfinx mpich pyvista && \ 
+    mamba install -c conda-forge fenics-dolfinx mpich && \
     mamba clean -a -y
 
-# Activate the environment by default
-SHELL ["conda", "run", "-n", "fenics", "/bin/bash", "-c"]
+# Set the working directory to /opt/app
+WORKDIR /opt/app
 
-# Optional: Set the environment as the default command
-CMD ["bash"]
+# Copy the requirements.txt file into the container's /opt/app directory
+COPY requirements.txt /opt/app/requirements.txt
+
+# Use mamba to install Python dependencies from the requirements.txt file
+RUN mamba install --yes --file /opt/app/requirements.txt
+
+# Copy the rest of the application files into the container's /opt/app directory
+COPY . /opt/app/
+
+# Set the default command for the container (to run the shell)
+CMD ["/bin/bash"]
