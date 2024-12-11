@@ -1,5 +1,5 @@
 {
-  "name": "FEniCS Development Container",
+  "name": "fenicsx",
   "build": {
     "dockerfile": "../docker/dockerfile",
     "context": ".."
@@ -21,8 +21,10 @@
     "ms-vscode.cpptools",
     "ms-toolsai.jupyter"
   ],
-"postCreateCommand": [
-  "/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && conda activate fenics"
-],
+  "postCreateCommand": [
+    "/bin/bash",
+    "-c",
+    "source /opt/conda/etc/profile.d/conda.sh && conda activate fenics"
+  ],
   "remoteUser": "myuser"
 }
