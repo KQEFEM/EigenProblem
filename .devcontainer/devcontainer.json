@@ -10,23 +10,19 @@
   ],
   "settings": {
     "terminal.integrated.shell.linux": "/bin/bash",
-    "terminal.integrated.shell.osx": "/bin/bash",
-    "terminal.integrated.shell.windows": "C:\\Windows\\System32\\wsl.exe",
     "remote.extensionKind": {
       "ms-python.python": "ui",
       "ms-vscode.cpptools": "ui",
       "ms-toolsai.jupyter": "ui"
-    },
-    "remote.userDataDir": "/root/.vscode-server"
+    }
   },
   "extensions": [
     "ms-python.python",
     "ms-vscode.cpptools",
     "ms-toolsai.jupyter"
   ],
-  "postCreateCommand": [
-    ". /opt/conda/etc/profile.d/conda.sh && conda activate fenics",
-    "echo '. /opt/conda/etc/profile.d/conda.sh && conda activate fenics' >> ~/.bashrc"
-  ],
+"postCreateCommand": [
+  "/bin/bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && conda activate fenics"
+],
   "remoteUser": "myuser"
 }
