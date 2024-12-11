@@ -1,26 +1,30 @@
 {
-  "name": "FEniCS Development Container",
+  "name": "fenicsx",
   "build": {
-    "dockerfile": "../docker/Dockerfile",
+    "dockerfile": "../docker/dockerfile",
     "context": ".."
   },
+  "workspaceFolder": "/opt/app",
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/opt/app,type=bind,consistency=cached"
+  ],
   "settings": {
     "terminal.integrated.shell.linux": "/bin/bash",
     "remote.extensionKind": {
       "ms-python.python": "ui",
       "ms-vscode.cpptools": "ui",
       "ms-toolsai.jupyter": "ui"
-    },
-    "remote.userDataDir": "/root/.vscode-server"
+    }
   },
   "extensions": [
     "ms-python.python",
     "ms-vscode.cpptools",
     "ms-toolsai.jupyter"
   ],
-  "mounts": [
-    "source=${localWorkspaceFolder}/,target=/opt/app,type=bind",
-    "source=${env:HOME}/.vscode/extensions,target=/root/.vscode-server/extensions,type=bind"
+  "postCreateCommand": [
+    "/bin/bash",
+    "-c",
+    "source /opt/conda/etc/profile.d/conda.sh && conda activate fenics"
   ],
-  "postCreateCommand": "echo 'Debug: Start' && echo '' && echo 'To activate the FEniCS environment, run: conda activate fenics' && echo '' && echo 'Debug: End'"
+  "remoteUser": "myuser"
 }

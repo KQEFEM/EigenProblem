@@ -14,16 +14,8 @@ RUN apt-get update && apt-get install -y \
     unzip \
     build-essential \
     && apt-get clean
-
-# Create the fenics environment using mamba
-RUN mamba create -n fenics python=3.9 fenics-dolfinx mpich && \
-    mamba clean -a -y
-
 # Create a non-root user for running the container
 RUN useradd -m -s /bin/bash myuser
-
-# Change the ownership of /opt/conda (or wherever your environment was installed) to myuser
-RUN chown -R myuser:myuser /opt/conda
 
 # Switch to the non-root user
 USER myuser
@@ -31,12 +23,17 @@ USER myuser
 # Set the working directory
 WORKDIR /opt/app
 
+# Create the fenics environment using mamba
+RUN mamba create -n fenics python=3.9 fenics-dolfinx mpich && mamba clean -a -y
+
 # Copy the requirements.txt and install dependencies into the fenics environment
 COPY --chown=myuser:myuser requirements.txt /opt/app/requirements.txt
-RUN mamba install --yes --file /opt/app/requirements.txt -n fenics
+RUN /opt/conda/bin/mamba install --yes --file /opt/app/requirements.txt -n fenics  && \
+    /opt/conda/bin/mamba clean -a -y
 
 # Copy the rest of the app (with the proper ownership)
 COPY --chown=myuser:myuser . /opt/app/
 
-# Set default command for the container to activate the fenics environment
-CMD ["bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && conda activate fenics && exec /bin/bash"]
+# Set the PATH to the Fenics environment and default command to start bash with environment activated
+ENV PATH="/opt/conda/envs/fenics/bin:$PATH"
+CMD ["bash", "-c", "conda activate fenics && exec /bin/bash"]

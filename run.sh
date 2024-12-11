@@ -14,7 +14,7 @@ fi
 # Function to build the Docker image
 build_image() {
     echo "Building the Docker image in the current workspace..."
-    docker build -t $IMAGE_NAME -f $DOCKERFILE_DIR/Dockerfile .
+    docker build -t $IMAGE_NAME -f $DOCKERFILE_DIR/dockerfile .
 }
 
 # Function to run the container in the current workspace
