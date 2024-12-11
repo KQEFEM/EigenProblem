@@ -72,6 +72,7 @@ class FENicSEigenProblem:
         # Set default tolerances and placeholders for FEniCS objects
         self.tol = 1e-9
         self.mesh = None
+        self.nodes = None
         self.V = None
         self.u = None
         self.v = None
@@ -136,8 +137,7 @@ class FENicSEigenProblem:
             )
         elif self.domain_type.lower() == "cube":
             # Create a cube mesh
-            self.domain = [1, 1, 1]
-            self.num_nodes = 10
+          
             print("Domain:", self.domain)
             print("Num nodes:", self.num_nodes)
             self.mesh = create_box(
@@ -155,6 +155,7 @@ class FENicSEigenProblem:
             self.mesh = fem.UnitSquareMesh(self.num_nodes, self.num_nodes)
 
         # Create the function space
+        self.nodes = self.mesh.geometry.x
         self.V = fem.functionspace(self.mesh, ("P", 1))
         self.u = ufl.TrialFunction(self.V)
         self.v = ufl.TestFunction(self.V)
@@ -360,5 +361,5 @@ if __name__ == "__main__":
     eigen_problem = FENicSEigenProblem(
         num_nodes=50, domain_type="cube", test_mode=False, num_eigenvalues=25
     )
-
+    eigen_problem.domain = [1, 1, 1]
     eigen_problem.run()
