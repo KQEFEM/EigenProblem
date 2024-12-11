@@ -6,6 +6,8 @@
   },
   "settings": {
     "terminal.integrated.shell.linux": "/bin/bash",
+    "terminal.integrated.shell.osx": "/bin/bash",
+    "terminal.integrated.shell.windows": "C:\\Windows\\System32\\wsl.exe",
     "remote.extensionKind": {
       "ms-python.python": "ui",
       "ms-vscode.cpptools": "ui",
@@ -21,5 +23,9 @@
   "mounts": [
     "source=${localWorkspaceFolder},target=/opt/app,type=bind"
   ],
-  "postCreateCommand": "echo 'To activate the FEniCS environment, run: conda activate fenics' && conda activate fenics"
+  "postCreateCommand": [
+    "echo 'To activate the FEniCS environment, run: conda activate fenics'",
+    "source /opt/conda/etc/profile.d/conda.sh",
+    "conda activate fenics"
+  ]
 }
