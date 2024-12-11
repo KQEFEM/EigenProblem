@@ -15,6 +15,8 @@ $$
 Currently this code only runs for a cube and dirichlet BCs but can be extended. 
 
 ## Running
+**Note you should [install Docker Destop](https://www.docker.com/products/docker-desktop/) and in vscode** 
+
 To run this code use the main.py file and change the parameters are your leisure. The eigenvalues are saved in a pickle file in the folder 'data' locally.
 
 Alternatively, use the following:
