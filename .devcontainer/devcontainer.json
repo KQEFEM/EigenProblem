@@ -4,6 +4,10 @@
     "dockerfile": "../docker/dockerfile",
     "context": ".."
   },
+  "workspaceFolder": "/opt/app",
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/opt/app,type=bind,consistency=cached"
+  ],
   "settings": {
     "terminal.integrated.shell.linux": "/bin/bash",
     "terminal.integrated.shell.osx": "/bin/bash",
@@ -20,12 +24,9 @@
     "ms-vscode.cpptools",
     "ms-toolsai.jupyter"
   ],
-  "mounts": [
-    "source=${localWorkspaceFolder},target=/opt/app,type=bind"
-  ],
   "postCreateCommand": [
-    "echo 'To activate the FEniCS environment, run: conda activate fenics'",
-    "source /opt/conda/etc/profile.d/conda.sh",
-    "conda activate fenics"
-  ]
+    ". /opt/conda/etc/profile.d/conda.sh && conda activate fenics",
+    "echo '. /opt/conda/etc/profile.d/conda.sh && conda activate fenics' >> ~/.bashrc"
+  ],
+  "remoteUser": "myuser"
 }
