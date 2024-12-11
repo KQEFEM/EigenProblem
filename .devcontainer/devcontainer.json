@@ -1,7 +1,7 @@
 {
   "name": "FEniCS Development Container",
   "build": {
-    "dockerfile": "../docker/Dockerfile",
+    "dockerfile": "../docker/dockerfile",
     "context": ".."
   },
   "settings": {
@@ -19,8 +19,8 @@
     "ms-toolsai.jupyter"
   ],
   "mounts": [
-    "source=${localWorkspaceFolder}/,target=/opt/app,type=bind",
-    "source=${env:HOME}/.vscode/extensions,target=/root/.vscode-server/extensions,type=bind"
+    "source=${localWorkspaceFolder},target=/opt/app,type=bind",
+    "source=${localEnv:HOME}/.vscode/extensions,target=/root/.vscode-server/extensions,type=bind"
   ],
   "postCreateCommand": "echo 'Debug: Start' && echo '' && echo 'To activate the FEniCS environment, run: conda activate fenics' && echo '' && echo 'Debug: End'"
 }
