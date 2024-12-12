@@ -1,4 +1,4 @@
-# FENicSEigenProblem
+# Eigenvalues of the Maxwell Equation FEniCS
 
 `FENicSEigenProblem` is a Python class that solves eigenvalue problems for electromagnetic systems using the finite element method (FEM) with the FEniCS library. It is designed for solving problems such as the Maxwell equations:
 
