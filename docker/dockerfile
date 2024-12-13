@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y \
     unzip \
     build-essential \
     && apt-get clean
+
 # Create a non-root user for running the container
 RUN useradd -m -s /bin/bash myuser
 
@@ -36,4 +37,6 @@ COPY --chown=myuser:myuser . /opt/app/
 
 # Set the PATH to the Fenics environment and default command to start bash with environment activated
 ENV PATH="/opt/conda/envs/fenics/bin:$PATH"
-CMD ["bash", "-c", "conda activate fenics && exec /bin/bash"]
+
+# Use bash in interactive mode
+CMD ["bash", "-i"]
