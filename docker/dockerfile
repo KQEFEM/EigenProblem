@@ -25,7 +25,7 @@ USER myuser
 WORKDIR /opt/app
 
 # Create the fenics environment using mamba
-RUN mamba create -n fenics python=3.9 fenics-dolfinx mpich && mamba clean -a -y
+RUN mamba create -n fenics python=3.13 fenics-dolfinx mpich && mamba clean -a -y
 
 # Copy the requirements.txt and install dependencies into the fenics environment
 COPY --chown=myuser:myuser requirements.txt /opt/app/requirements.txt
