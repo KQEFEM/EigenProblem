@@ -89,16 +89,17 @@ update_image() {
 help_menu() {
     echo "Usage: ./run.sh [command]"
     echo "Commands:"
-    echo "  build                      - Build the Docker image in the current workspace"
-    echo "  run                        - Run the Docker container"
-    echo "  restart                    - Restart a stopped container"
-    echo "  delete_container           - Delete the Docker container"
-    echo "  delete_image               - Delete the Docker image"
-    echo "  list                       - List all Docker containers"
-    echo "  close_all                  - Stop and remove all Docker containers"
-    echo "  delete_image_container - Delete both the container and the image"
-    echo "  update                     - Update the Docker image (if needed)"
-    echo "  help                       - Display this help menu"
+    echo "  build                      - Build the Docker image in the current workspace."
+    echo "  build clean                - Perform a full reinstallation with no cache."
+    echo "  run                        - Run the Docker container."
+    echo "  restart                    - Restart a stopped container."
+    echo "  delete_container           - Delete the Docker container."
+    echo "  delete_image               - Delete the Docker image."
+    echo "  list                       - List all Docker containers."
+    echo "  close_all                  - Stop and remove all Docker containers."
+    echo "  delete_image_container     - Delete both the container and the image."
+    echo "  update                     - Update the Docker image (if needed)."
+    echo "  help                       - Display this help menu."
 }
 
 # Parse command-line arguments
