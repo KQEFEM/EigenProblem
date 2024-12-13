@@ -32,17 +32,20 @@ except ModuleNotFoundError:
 
 
 class FENicSEigenProblem:
-    """
-    This solves for the eigenvalues of the maxwell problem \nabla \times \nabla \times E = \omega^2 \varepsilon \mu E for the BC of \nabla \times E = 0.
+    r"""
+    This solves for the eigenvalues of the Maxwell problem:
+    $\nabla \times \nabla \times \mathbf{E} = \omega^2 \varepsilon \mu \mathbf{E}$ 
+    for the BC of $\nabla \times \mathbf{E} = 0$.
 
-    Running the code on MACOS:
-        Docker command to start fenics
+    Running the code on macOS:
+        Docker command to start FEniCS:
         docker run -ti -v $(pwd):/home/fenics/shared -w /home/fenics/shared quay.io/fenicsproject/stable:current
 
-    The solver uses SLEPc and is based on the tutorial: https://docs.fenicsproject.org/dolfinx/main/python/demos/demo_half_loaded_waveguide.html
-    See https://slepc.upv.es/documentation/slepc.pdf for more information on SLEPc
+    The solver uses SLEPc and is based on the tutorial:
+    https://docs.fenicsproject.org/dolfinx/main/python/demos/demo_half_loaded_waveguide.html
+    See https://slepc.upv.es/documentation/slepc.pdf for more information on SLEPc.
 
-    #? The test mode is not set-up yet.
+    #? The test mode is not set up yet.
     """
 
     def __init__(
@@ -160,7 +163,7 @@ class FENicSEigenProblem:
         self.v = ufl.TestFunction(self.V)
 
     def weak_form(self):
-        """Computes the weak form of the Maxwell eigenvalue problem.
+        r"""Computes the weak form of the Maxwell eigenvalue problem.
 
         This method defines the weak form by calculating the curl-curl
         and mass bilinear forms, then combines them to form the left-hand
