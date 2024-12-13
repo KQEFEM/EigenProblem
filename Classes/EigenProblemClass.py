@@ -88,9 +88,8 @@ class FENicSEigenProblem:
         self.experiment_name = None
         self.subfolder_name = None
         self.script_dir = os.path.dirname(os.path.realpath(__file__))
-        self.workspace = os.path.join(
-            self.script_dir.split("EigenProblem")[0], "EigenProblem"
-        )
+        self.parent_dir = os.path.dirname(self.script_dir)  # Get the parent directory
+        self.workspace  = os.path.join(self.parent_dir, "EigenProblem")
 
     def set_constants(self):
         """
