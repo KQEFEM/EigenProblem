@@ -159,7 +159,7 @@ class FENicSEigenProblem:
         # Create the function space
         self.nodes = self.mesh.geometry.x
         self.V = fem.functionspace(self.mesh, ("P", 1))
-        self.u = ufl.TrialFunction(self.V)
+ s        self.u = ufl.TrialFunction(self.V)
         self.v = ufl.TestFunction(self.V)
 
     def weak_form(self):
@@ -173,10 +173,10 @@ class FENicSEigenProblem:
         """
 
         # Define the curl-curl bilinear form
-        curl_curl = ufl.dot(ufl.curl(self.u), ufl.curl(self.v)) * ufl.dx
+        self.curl_curl = ufl.dot(ufl.curl(self.u), ufl.curl(self.v)) * ufl.dx
 
         # Define the mass bilinear form
-        mass = (
+        self.mass = (
             self.frequency**2
             * self.permittivity
             * self.permeability
@@ -185,7 +185,7 @@ class FENicSEigenProblem:
         )
 
         # Combine the curl-curl and mass bilinear forms for the LHS
-        self.LHS = curl_curl + mass
+        self.LHS = self.curl_curl + self.mass
 
         # Set the RHS to zero
         self.RHS = 0
@@ -224,10 +224,12 @@ class FENicSEigenProblem:
         self.solution = fem.Function(self.V)
 
         # Define the bilinear form
-        A = fem_petsc.assemble_matrix(fem.form(self.LHS), bcs=self.bc)
+        A = fem_petsc.assemble_matrix(fem.form(self.curl_curl), bcs=self.bc)
+        B = fem_petsc.assemble_matrix(fem.form(self.mass), bcs=self.bc)
         A.assemble()
+        B.assemble()
         self.eps = SLEPc.EPS().create(self.mesh.comm)  # This represents the solver
-        self.eps.setOperators(A)  # Set the operators for the eigenvalue problem
+        self.eps.setOperators(A,B)  # Set the operators for the eigenvalue problem
         """ 
         If the matrices in the problem have known properties (e.g. hermiticity) we can use this information in SLEPc to accelerate the calculation with the setProblemType function. For this problem, there is no property that can be exploited, and therefore we define it as a generalized non-Hermitian eigenvalue problem with the SLEPc.EPS.ProblemType.GNHEP object 
         """
