@@ -42,7 +42,7 @@ If you are using VS Code, you could alternatively open the `devcontainer.json` b
 
 ## Requirements
 These are provided in the requirements.txt (except for fenicsx) on the linux subsystem. (mamba create -n <env_name> --file requirements.txt)
-- **Python 3.9**
+- **Python 3.9 (testing 3.12)**
 - **FEniCS**: For the finite element method (FEM) solver. See [here](https://fenicsproject.org/download/) for installation instructions (recommend using mamba for speed).
 - **SLEPc**: For solving eigenvalue problems.
 - **PETSc**: A toolkit for efficient numerical computation, used by FEniCS for matrix operations.
