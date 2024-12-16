@@ -160,7 +160,7 @@ class FENicSEigenProblem:
         self.nodes = self.mesh.geometry.x
         # self.V = fem.functionspace(self.mesh, ("Nedelec 1st kind H(curl)",1))
         self.V = fem.functionspace(self.mesh, ("P", 1))
-        self.u = ufl.TrialFunction(self.V)
+ s        self.u = ufl.TrialFunction(self.V)
         self.v = ufl.TestFunction(self.V)
 
     def weak_form(self):
