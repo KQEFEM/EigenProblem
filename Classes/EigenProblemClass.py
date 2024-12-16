@@ -272,7 +272,7 @@ class FENicSEigenProblem:
 
         # Save eigenvalues to a .pkl file
         eigenvalues_filename = os.path.join(
-            self.workspace, "data/eigenvalues_n" + str(self.num_eigenvalues) + ".pkl"
+            self.parent_dir, "data/eigenvalues_n" + str(self.num_eigenvalues) + ".pkl"
         )
         # Ensure the directory exists
         os.makedirs(os.path.dirname(eigenvalues_filename), exist_ok=True)
