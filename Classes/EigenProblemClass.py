@@ -159,7 +159,7 @@ class FENicSEigenProblem:
         # Create the function space
         self.nodes = self.mesh.geometry.x
         self.V = fem.functionspace(self.mesh, ("P", 1))
- s        self.u = ufl.TrialFunction(self.V)
+        self.u = ufl.TrialFunction(self.V)
         self.v = ufl.TestFunction(self.V)
 
     def weak_form(self):
@@ -367,3 +367,4 @@ if __name__ == "__main__":
     )
     eigen_problem.domain = [1, 1, 1]
     eigen_problem.run()
+    print(eigen_problem.vals)
