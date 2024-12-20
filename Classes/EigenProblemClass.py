@@ -13,7 +13,7 @@ import dolfinx.fem.petsc as fem_petsc
 import numpy as np
 import ufl as ufl
 from dolfinx import fem
-from dolfinx.mesh import CellType, create_box
+from dolfinx.mesh import CellType, create_box, create_rectangle, exterior_facet_indices, locate_entities
 from mpi4py import MPI
 
 try:
@@ -34,7 +34,7 @@ except ModuleNotFoundError:
 class FENicSEigenProblem:
     r"""
     This solves for the eigenvalues of the Maxwell problem:
-    $\nabla \times \nabla \times \mathbf{E} = \omega^2 \varepsilon \mu \mathbf{E}$ 
+    $\nabla \times \nabla \times \mathbf{E} = \omega^2 \varepsilon \mu \mathbf{E}$
     for the BC of $\nabla \times \mathbf{E} = 0$.
 
     Running the code on macOS:
@@ -60,7 +60,7 @@ class FENicSEigenProblem:
 
         Args:
           num_nodes (int): Number of nodes for mesh generation (default: 100).
-          domain_type (str): Type of domain (e.g., 'cube', 'rectangle').
+          domain_type (str): Type of domain (e.g., 'cube', 'rectangle'). In 3D [height width depth]
           test_problem (bool): Run a predefined test problem (default: False).
           test_mode (bool): Enable testing mode for pytest (default: False).
           num_eigenvalues (int): Number of eigenvalues to compute (default: 10).
@@ -92,7 +92,7 @@ class FENicSEigenProblem:
         self.subfolder_name = None
         self.script_dir = os.path.dirname(os.path.realpath(__file__))
         self.parent_dir = os.path.dirname(self.script_dir)  # Get the parent directory
-        self.workspace  = os.path.join(self.parent_dir, "EigenProblem")
+        self.workspace = os.path.join(self.parent_dir, "EigenProblem")
 
     def set_constants(self):
         """
@@ -108,7 +108,9 @@ class FENicSEigenProblem:
         None
         """
         # Frequency of the system (omega)
-        self.frequency = fem.Constant(self.mesh, 1.0)
+        height = self.domain[0]
+        self.lambda0 =  height / 0.2
+        self.k0 = fem.Constant(self.mesh, 2 * np.pi / self.lambda0)
 
         # Electric permittivity (epsilon)
         self.permittivity = fem.Constant(self.mesh, 1.0)
@@ -131,15 +133,18 @@ class FENicSEigenProblem:
         """
         if self.domain_type.lower() == "rectangle":
             # Create a rectangle mesh
-            self.mesh = fem.RectangleMesh(
-                fem.Point(0, 0),
-                fem.Point(self.domain[0], self.domain[1]),
-                self.num_nodes,
-                self.num_nodes,
+            self.mesh = create_rectangle(
+                MPI.COMM_WORLD,
+                [np.array([0, 0]), np.array(self.domain[0], self.domain[1])],
+                [
+                    self.num_nodes,
+                    self.num_nodes,
+                ],  # Number of elements in each direction
+                CellType.quadrilateral,
             )
         elif self.domain_type.lower() == "cube":
             # Create a cube mesh
-          
+
             print("Domain:", self.domain)
             print("Num nodes:", self.num_nodes)
             self.mesh = create_box(
@@ -158,9 +163,13 @@ class FENicSEigenProblem:
 
         # Create the function space
         self.nodes = self.mesh.geometry.x
-        self.V = fem.functionspace(self.mesh, ("P", 1))
-        self.u = ufl.TrialFunction(self.V)
-        self.v = ufl.TestFunction(self.V)
+        # self.V = fem.functionspace(self.mesh, ("P", 1))
+        self.V = fem.functionspace(self.mesh, ("Nedelec 1st kind H(curl)", 1))
+
+        self.et, self.ez = ufl.TrialFunctions(self.V)
+        self.vt, self.vz = ufl.TestFunctions(self.V)
+        # self.u = ufl.TrialFunction(self.V)
+        # self.v = ufl.TestFunction(self.V)
 
     def weak_form(self):
         r"""Computes the weak form of the Maxwell eigenvalue problem.
@@ -172,23 +181,14 @@ class FENicSEigenProblem:
         \nabla \times \nabla \times E - \omega^2 \varepsilon \mu E = 0
         """
 
-        # Define the curl-curl bilinear form
-        self.curl_curl = ufl.dot(ufl.curl(self.u), ufl.curl(self.v)) * ufl.dx
+        a_tt = (ufl.inner(ufl.curl(self.et), ufl.curl(self.vt)) - (self.k0**2) * self.epsilon * ufl.inner(self.et, self.vt)) * ufl.dx
+        b_tt = ufl.inner(self.et, self.vt) * ufl.dx
+        b_tz = ufl.inner(self.et, ufl.grad(self.vz)) * ufl.dx
+        b_zt = ufl.inner(ufl.grad(self.ez), self.vt) * ufl.dx
+        b_zz = (ufl.inner(ufl.grad(self.ez), ufl.grad(self.vz)) - (self.k0**2) * self.epsilon * ufl.inner(self.ez, self.vz)) * ufl.dx
 
-        # Define the mass bilinear form
-        self.mass = (
-            self.frequency**2
-            * self.permittivity
-            * self.permeability
-            * ufl.dot(self.u, self.v)
-            * ufl.dx
-        )
-
-        # Combine the curl-curl and mass bilinear forms for the LHS
-        self.LHS = self.curl_curl + self.mass
-
-        # Set the RHS to zero
-        self.RHS = 0
+        self.a = fem.form(a_tt)
+        self.b = fem.form(b_tt + b_tz + b_zt + b_zz)
 
     def set_boundary_condition(self):
         """Create a Dirichlet boundary condition on the entire boundary.
@@ -203,14 +203,12 @@ class FENicSEigenProblem:
         boundary_condition : DirichletBC
             The boundary condition.
         """
-        value = 0.0
-        bc_function = fem.Constant(self.V.mesh, value)
-
-        boundary_dofs = fem.locate_dofs_geometrical(
-            self.V, lambda x: np.full(x.shape[1], True)
-        )  # All boundary dofs
-
-        self.bc = [fem.dirichletbc(bc_function, boundary_dofs, self.V)]  # Wrap in list
+        bc_facets = exterior_facet_indices(self.mesh.topology)
+        bc_dofs = fem.locate_dofs_topological(self.V, self.mesh.topology.dim - 1, bc_facets)
+        u_bc = fem.Function(self.V)
+        with u_bc.x.petsc_vec.localForm() as loc:
+            loc.set(0)
+        self.bc = fem.dirichletbc(u_bc, bc_dofs)
 
     def solve_eigenvalue_problem(self):
         """
@@ -224,12 +222,12 @@ class FENicSEigenProblem:
         self.solution = fem.Function(self.V)
 
         # Define the bilinear form
-        A = fem_petsc.assemble_matrix(fem.form(self.curl_curl), bcs=self.bc)
-        B = fem_petsc.assemble_matrix(fem.form(self.mass), bcs=self.bc)
+        A = fem_petsc.assemble_matrix(fem.form(self.curl_curl))  # , bcs=self.bc)
+        B = fem_petsc.assemble_matrix(fem.form(self.mass))  # , bcs=self.bc)
         A.assemble()
         B.assemble()
         self.eps = SLEPc.EPS().create(self.mesh.comm)  # This represents the solver
-        self.eps.setOperators(A,B)  # Set the operators for the eigenvalue problem
+        self.eps.setOperators(A, B)  # Set the operators for the eigenvalue problem
         """ 
         If the matrices in the problem have known properties (e.g. hermiticity) we can use this information in SLEPc to accelerate the calculation with the setProblemType function. For this problem, there is no property that can be exploited, and therefore we define it as a generalized non-Hermitian eigenvalue problem with the SLEPc.EPS.ProblemType.GNHEP object 
         """
@@ -265,6 +263,17 @@ class FENicSEigenProblem:
             (i, np.sqrt(-self.eps.getEigenvalue(i)))
             for i in range(self.eps.getConverged())
         ]
+        self.vals = [
+            (
+                i,
+                np.sqrt(
+                    self.eps.getEigenvalue(i)
+                    / float(self.permittivity)
+                    / float(self.permeability)
+                ),
+            )  # Correct
+            for i in range(self.eps.getConverged())
+        ]
 
         # Sort kz by real part
         self.vals.sort(key=lambda x: x[1].real)
@@ -284,6 +293,34 @@ class FENicSEigenProblem:
 
         print(f"Eigenvalues saved to: {eigenvalues_filename}")
 
+    def analytical_eigenfrequencies_rectangle_tm(self, num_modes=5):
+        """
+        Computes the analytical eigenfrequencies for the 2D TM mode in a rectangle.
+
+        Args:
+            num_modes (int): Number of modes to calculate in each direction (default: 5).
+
+        Returns:
+            numpy.ndarray: A 2D array containing the eigenfrequencies.
+        """
+        Lx = self.domain[0]
+        Ly = self.domain[1]
+        mu = float(self.permeability)  # convert from fenics constant
+        epsilon = float(self.permittivity)  # convert from fenics constant
+
+        eigenfrequencies = np.zeros((num_modes, num_modes))
+
+        for m in range(num_modes):
+            for n in range(num_modes):
+                if m == 0 and n == 0:
+                    continue
+                omega = (np.pi / np.sqrt(mu * epsilon)) * np.sqrt(
+                    (m / Lx) ** 2 + (n / Ly) ** 2
+                )
+                eigenfrequencies[m, n] = omega
+
+        return eigenfrequencies
+
     def run(self):
         self.create_mesh_and_function_space()
         print("\n\n Computed mesh and function space \n\n ")
@@ -291,6 +328,7 @@ class FENicSEigenProblem:
         self.weak_form()
         self.set_boundary_condition()
         self.solve_eigenvalue_problem()
+        self.analytical_eigenfrequencies_rectangle_tm()
         self.save_eigenproblem()
 
 
@@ -363,7 +401,7 @@ if __name__ == "__main__":
     # test() #? THis is not set up to do any tests yet but only runs the main function
 
     eigen_problem = FENicSEigenProblem(
-        num_nodes=50, domain_type="cube", test_mode=False, num_eigenvalues=25
+        num_nodes=20, domain_type="cube", test_mode=False, num_eigenvalues=25
     )
     eigen_problem.domain = [1, 1, 1]
     eigen_problem.run()
