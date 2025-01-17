@@ -4,11 +4,12 @@ This is for solving mask deformation problems using FEniCS (FEM).
 
 import os
 
-# from dolfinx.fem import FunctionSpace, dirichletbc, Constant, locate_dofs_topological, TrialFunction, TestFunction# import mshr  # package in fenics
+# from dolfinx.fem import FunctionSpace, dirichletbc, Constant, locate_dofs_topological, TrialFunction, TestFunction# import self.meshr  # package in fenics
 import pickle
 import shutil
 import time
 
+import basix.ufl as ufl_basis
 import dolfinx.fem.petsc as fem_petsc
 import numpy as np
 import ufl as ufl
@@ -109,10 +110,10 @@ class FENicSEigenProblem:
         """
         # Frequency of the system (omega)
         height = self.domain[0]
-        self.lambda0 =  height / 0.2
+        self.lambda0 = height / 0.2
         self.k0 = fem.Constant(self.mesh, 2 * np.pi / self.lambda0)
 
-        # Electric permittivity (epsilon)
+        # Electric permittivity (epsilon). This should be an unknown t o solve for
         self.permittivity = fem.Constant(self.mesh, 1.0)
 
         # Magnetic permeability (mu)
@@ -135,13 +136,17 @@ class FENicSEigenProblem:
             # Create a rectangle mesh
             self.mesh = create_rectangle(
                 MPI.COMM_WORLD,
-                [np.array([0, 0]), np.array(self.domain[0], self.domain[1])],
+                [np.array([0, 0]), np.array([self.domain[0], self.domain[1]])],
                 [
                     self.num_nodes,
-                    self.num_nodes,
+                    int(self.num_nodes / 300 * 120),
                 ],  # Number of elements in each direction
                 CellType.quadrilateral,
             )
+            self.mesh.topology.create_connectivity(
+                self.mesh.topology.dim - 1, self.mesh.topology.dim
+            )
+
         elif self.domain_type.lower() == "cube":
             # Create a cube mesh
 
@@ -156,6 +161,9 @@ class FENicSEigenProblem:
                 [self.num_nodes, self.num_nodes, self.num_nodes],
                 CellType.hexahedron,
             )
+            self.mesh.topology.create_connectivity(
+                self.mesh.topology.dim - 1, self.mesh.topology.dim
+            )
         else:
             print("\nStandard unit square is used.\n")
             # Create a unit square mesh
@@ -163,8 +171,31 @@ class FENicSEigenProblem:
 
         # Create the function space
         self.nodes = self.mesh.geometry.x
+        
+        D = fem.functionspace(self.mesh, ("DQ", 0))
+        self.eps = fem.Function(D)
+        eps_v = 1
+        eps_d = 2.45
+        d = 0.5 * self.domain[0]
+        def Omega_d(x):
+            return x[1] <= d
+
+
+        def Omega_v(x):
+            return x[1] >= d
+
+
+        cells_v = locate_entities(self.mesh, self.mesh.topology.dim, Omega_v)
+        cells_d = locate_entities(self.mesh, self.mesh.topology.dim, Omega_d)
+
+        self.eps.x.array[cells_d] = np.full_like(cells_d, eps_d )
+        self.eps.x.array[cells_v] = np.full_like(cells_v, eps_v)
         # self.V = fem.functionspace(self.mesh, ("P", 1))
-        self.V = fem.functionspace(self.mesh, ("Nedelec 1st kind H(curl)", 1))
+        degree = 1
+        RTCE = ufl_basis.element("RTCE", self.mesh.basix_cell(), degree)
+        Q = ufl_basis.element("Lagrange", self.mesh.basix_cell(), degree)
+        self.V = fem.functionspace(self.mesh, ufl_basis.mixed_element([RTCE, Q]))
+        # self.V = fem.functionspace(self.mesh, ("Nedelec 1st kind H(curl)", 1))
 
         self.et, self.ez = ufl.TrialFunctions(self.V)
         self.vt, self.vz = ufl.TestFunctions(self.V)
@@ -181,11 +212,17 @@ class FENicSEigenProblem:
         \nabla \times \nabla \times E - \omega^2 \varepsilon \mu E = 0
         """
 
-        a_tt = (ufl.inner(ufl.curl(self.et), ufl.curl(self.vt)) - (self.k0**2) * self.epsilon * ufl.inner(self.et, self.vt)) * ufl.dx
+        a_tt = (
+            ufl.inner(ufl.curl(self.et), ufl.curl(self.vt))
+            - (self.k0**2) * self.eps * ufl.inner(self.et, self.vt)
+        ) * ufl.dx
         b_tt = ufl.inner(self.et, self.vt) * ufl.dx
         b_tz = ufl.inner(self.et, ufl.grad(self.vz)) * ufl.dx
         b_zt = ufl.inner(ufl.grad(self.ez), self.vt) * ufl.dx
-        b_zz = (ufl.inner(ufl.grad(self.ez), ufl.grad(self.vz)) - (self.k0**2) * self.epsilon * ufl.inner(self.ez, self.vz)) * ufl.dx
+        b_zz = (
+            ufl.inner(ufl.grad(self.ez), ufl.grad(self.vz))
+            - (self.k0**2) * self.eps * ufl.inner(self.ez, self.vz)
+        ) * ufl.dx
 
         self.a = fem.form(a_tt)
         self.b = fem.form(b_tt + b_tz + b_zt + b_zz)
@@ -204,7 +241,9 @@ class FENicSEigenProblem:
             The boundary condition.
         """
         bc_facets = exterior_facet_indices(self.mesh.topology)
-        bc_dofs = fem.locate_dofs_topological(self.V, self.mesh.topology.dim - 1, bc_facets)
+        bc_dofs = fem.locate_dofs_topological(
+            self.V, self.mesh.topology.dim - 1, bc_facets
+        )
         u_bc = fem.Function(self.V)
         with u_bc.x.petsc_vec.localForm() as loc:
             loc.set(0)
@@ -219,35 +258,47 @@ class FENicSEigenProblem:
         ncv (Number of Converged Values): The number of basis vectors in the eigenspace. ncv should be greater than nev.
         """
         # Create a solution function in the function space
-        self.solution = fem.Function(self.V)
-
-        # Define the bilinear form
-        A = fem_petsc.assemble_matrix(fem.form(self.curl_curl))  # , bcs=self.bc)
-        B = fem_petsc.assemble_matrix(fem.form(self.mass))  # , bcs=self.bc)
+        A = fem_petsc.assemble_matrix(self.a, bcs=[self.bc])
         A.assemble()
+        # A.shift(1e-5)
+        B = fem_petsc.assemble_matrix(self.b, bcs=[self.bc])
         B.assemble()
-        self.eps = SLEPc.EPS().create(self.mesh.comm)  # This represents the solver
-        self.eps.setOperators(A, B)  # Set the operators for the eigenvalue problem
         """ 
         If the matrices in the problem have known properties (e.g. hermiticity) we can use this information in SLEPc to accelerate the calculation with the setProblemType function. For this problem, there is no property that can be exploited, and therefore we define it as a generalized non-Hermitian eigenvalue problem with the SLEPc.EPS.ProblemType.GNHEP object 
         """
-        self.eps.setProblemType(SLEPc.EPS.ProblemType.GNHEP)
+        eps = SLEPc.EPS().create(self.mesh.comm)
+        eps.setOperators(A, B)
 
-        self.eps.setDimensions(nev=self.num_eigenvalues)
+        eps.setProblemType(SLEPc.EPS.ProblemType.GNHEP)
+        eps.setTolerances(tol=self.tol)
+        eps.setType(SLEPc.EPS.Type.KRYLOVSCHUR)
+        # Get ST context from eps
+        st = eps.getST()
 
-        self.eps.setTolerances(tol=self.tol)
+        # Set shift-and-invert transformation
+        st.setType(SLEPc.ST.Type.SINVERT)
+        """
+                Then, we need to define the number of eigenvalues we want to
+        calculate. We can do this with the `setDimensions` function, where we
+        specify that we are looking for just one eigenvalue:
 
-        # Set the eigensolver. This is taken from the tutorial: https://docs.fenicsproject.org/dolfinx/main/python/demos/demo_half_loaded_waveguide.html
-        # See https://slepc.upv.es/documentation/slepc.pdf for more information on SLEPc
-        self.eps.setType(SLEPc.EPS.Type.KRYLOVSCHUR)
+        """
+        eps.setDimensions(nev=self.num_eigenvalues)
+        """
 
-        # Solve the eigenvalue problem
-        self.eps.solve()
-        self.eps.view()
+        We can finally solve the problem with the `solve` function. To gain a
+        deeper insight over the simulation, we also print an output message
+        from SLEPc by calling the `view` and `errorView` function:
+
+        """
+        eps.solve()
+        eps.view()
+        eps.errorView()
 
         # Get number of converged eigenvalues
-        nconv = self.eps.getConverged()
+        nconv = eps.getConverged()
         print(f"Number of converged eigenvalues: {nconv}")
+        self.eps = eps
 
     def save_eigenproblem(self):
         """
@@ -328,7 +379,8 @@ class FENicSEigenProblem:
         self.weak_form()
         self.set_boundary_condition()
         self.solve_eigenvalue_problem()
-        self.analytical_eigenfrequencies_rectangle_tm()
+        print('solved')
+        # self.analytical_eigenfrequencies_rectangle_tm()
         self.save_eigenproblem()
 
 
@@ -401,8 +453,10 @@ if __name__ == "__main__":
     # test() #? THis is not set up to do any tests yet but only runs the main function
 
     eigen_problem = FENicSEigenProblem(
-        num_nodes=20, domain_type="cube", test_mode=False, num_eigenvalues=25
+        num_nodes=300, domain_type="rectangle", test_mode=False, num_eigenvalues=10
     )
+    eigen_problem.tol = 1e-9
     eigen_problem.domain = [1, 1, 1]
+    eigen_problem.domain = [1, 0.45, 1]
     eigen_problem.run()
     print(eigen_problem.vals)
