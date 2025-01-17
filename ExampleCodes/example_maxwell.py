@@ -9,7 +9,7 @@
 #     jupytext_version: 1.16.4
 # kernelspec:
 #   display_name:  3 (ipykernel)
-#   language: 
+#   language:
 #   name: 3
 # ---
 
@@ -42,20 +42,20 @@
 # problem:
 
 # """
+import numpy as np
 from mpi4py import MPI
 
-import numpy as np
-
 try:
-    from petsc4py import PETSc
-
     import dolfinx
+    from petsc4py import PETSc
 
     if not dolfinx.has_petsc:
         print("This demo requires DOLFINx to be compiled with PETSc enabled.")
         exit(0)
     if PETSc.IntType == np.int64 and MPI.COMM_WORLD.size > 1:
-        print("This solver fails with PETSc and 64-bit integers because of memory errors in MUMPS.")
+        print(
+            "This solver fails with PETSc and 64-bit integers because of memory errors in MUMPS."
+        )
         # Note: when PETSc.IntType == np.int32, superlu_dist is used
         # rather than MUMPS and does not trigger memory failures.
         exit(0)
@@ -71,7 +71,12 @@ import ufl
 from basix.ufl import element, mixed_element
 from dolfinx import fem, io, plot
 from dolfinx.fem.petsc import assemble_matrix
-from dolfinx.mesh import CellType, create_rectangle, exterior_facet_indices, locate_entities
+from dolfinx.mesh import (
+    CellType,
+    create_rectangle,
+    exterior_facet_indices,
+    locate_entities,
+)
 
 try:
     import pyvista
@@ -136,14 +141,17 @@ except ModuleNotFoundError:
 
 # Let's define the set of equations with the $\tan$ and $\cot$ function:
 
+
 # """
 def TMx_condition(
     kx_d: complex, kx_v: complex, eps_d: complex, eps_v: complex, d: float, h: float
 ) -> float:
     return kx_d / eps_d * np.tan(kx_d * d) + kx_v / eps_v * np.tan(kx_v * (h - d))
 
+
 def TEx_condition(kx_d: complex, kx_v: complex, d: float, h: float) -> float:
     return kx_d / np.tan(kx_d * d) + kx_v / np.tan(kx_v * (h - d))
+
 
 """
 Then, we can define the `verify_mode` function, to check whether a
@@ -152,6 +160,7 @@ other words, we provide a certain $k_z$, together with the geometrical
 and optical parameters of the waveguide, and `verify_mode()` checks
 whether the last equations for the $\mathrm{TE}_x$ or $\mathrm{TM}_x$
 modes are close to $0$."""
+
 
 def verify_mode(
     kz: complex,
@@ -173,6 +182,8 @@ def verify_mode(
     f_tm = TMx_condition(kx_d, kx_v, eps_d, eps_v, d, h)
     f_te = TEx_condition(kx_d, kx_v, d, h)
     return np.isclose(f_tm, 0, atol=threshold) or np.isclose(f_te, 0, atol=threshold)
+
+
 """
 
 We now define the domain. It is a rectangular domain with width $w$
@@ -187,7 +198,10 @@ nx = 300
 ny = int(0.4 * nx)
 
 msh = create_rectangle(
-    MPI.COMM_WORLD, np.array([[0, 0], [w, h]]), np.array([nx, ny]), CellType.quadrilateral
+    MPI.COMM_WORLD,
+    np.array([[0, 0], [w, h]]),
+    np.array([nx, ny]),
+    CellType.quadrilateral,
 )
 msh.topology.create_connectivity(msh.topology.dim - 1, msh.topology.dim)
 """
@@ -198,7 +212,7 @@ $\varepsilon_r = \varepsilon_d = 2.45$ in the dielectric:
 
 """
 eps_v = 1
-eps_d = 2.45
+eps_d = 1
 
 
 def Omega_d(x):
@@ -316,11 +330,15 @@ k0 = 2 * np.pi / lmbd0
 et, ez = ufl.TrialFunctions(V)
 vt, vz = ufl.TestFunctions(V)
 
-a_tt = (ufl.inner(ufl.curl(et), ufl.curl(vt)) - (k0**2) * eps * ufl.inner(et, vt)) * ufl.dx
+a_tt = (
+    ufl.inner(ufl.curl(et), ufl.curl(vt)) - (k0**2) * eps * ufl.inner(et, vt)
+) * ufl.dx
 b_tt = ufl.inner(et, vt) * ufl.dx
 b_tz = ufl.inner(et, ufl.grad(vz)) * ufl.dx
 b_zt = ufl.inner(ufl.grad(ez), vt) * ufl.dx
-b_zz = (ufl.inner(ufl.grad(ez), ufl.grad(vz)) - (k0**2) * eps * ufl.inner(ez, vz)) * ufl.dx
+b_zz = (
+    ufl.inner(ufl.grad(ez), ufl.grad(vz)) - (k0**2) * eps * ufl.inner(ez, vz)
+) * ufl.dx
 
 a = fem.form(a_tt)
 b = fem.form(b_tt + b_tz + b_zt + b_zz)
@@ -408,10 +426,10 @@ shift-and-invert transformation with the `SLEPc.ST.Type.SINVERT`
 object:
 
 """
-# Get ST context from eps
+# # Get ST context from eps
 st = eps.getST()
 
-# Set shift-and-invert transformation
+# # Set shift-and-invert transformation
 st.setType(SLEPc.ST.Type.SINVERT)
 """
 
@@ -443,7 +461,7 @@ calculate. We can do this with the `setDimensions` function, where we
 specify that we are looking for just one eigenvalue:
 
 """
-eps.setDimensions(nev=1)
+eps.setDimensions(nev=10)
 """
 
 We can finally solve the problem with the `solve` function. To gain a
@@ -468,7 +486,7 @@ vals = [(i, np.sqrt(-eps.getEigenvalue(i))) for i in range(eps.getConverged())]
 
 # Sort kz by real part
 vals.sort(key=lambda x: x[1].real)
-
+print(vals)
 eh = fem.Function(V)
 
 kz_list = []
@@ -487,7 +505,7 @@ for i, kz in vals:
         # Verify if kz is consistent with the analytical equations
         assert verify_mode(kz, w, h, d, lmbd0, eps_d, eps_v, threshold=1e-4)
 
-        print(f"eigenvalue: {-kz**2}")
+        print(f"eigenvalue: {-(kz**2)}")
         print(f"kz: {kz}")
         print(f"kz/k0: {kz / k0}")
 
