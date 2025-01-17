@@ -82,7 +82,7 @@ class FENicSEigenProblem:
           test_problem (bool): Run a predefined test problem (default: False).
           test_mode (bool): Enable testing mode for pytest (default: False).
           num_eigenvalues (int): Number of eigenvalues to compute (default: 10).
-          target_value_bool (bool): if True then you should specify the target in `def target_value` for manually
+          target_value_bool (bool): if True then you should specify the target in line 283 for manually
 
         """
         self.num_nodes = num_nodes
@@ -302,9 +302,7 @@ class FENicSEigenProblem:
         # Sort kz by real part
         self.vals.sort(key=lambda x: x[1].real)
         
-    def target_value(self):
-        """define the target value"""
-        self.target_value = -((0.5 * self.k0) ** 2)
+
 
     def run(self):
         self.create_domain()
