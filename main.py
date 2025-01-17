@@ -15,7 +15,7 @@ The class `FENicSEigenProblem` is designed to solve problems like the Maxwell eq
 
 """
 
-import Classes.EigenProblemClass as EP
+import Classes.EigenProblemClas2 as EP
 
 # Create an instance of the FENicSEigenProblem class
 eigen_problem = EP.FENicSEigenProblem(
