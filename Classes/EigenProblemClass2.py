@@ -9,7 +9,7 @@ import ufl as ufl
 from dolfinx import fem
 from dolfinx import mesh as dfl_mesh
 from mpi4py import MPI
-
+import pickle
 try:
     import pyvista
 
@@ -302,7 +302,43 @@ class FENicSEigenProblem:
         # Sort kz by real part
         self.vals.sort(key=lambda x: x[1].real)
         
+    import pickle
 
+    def save_eigenproblem(self):
+        """
+        Saves the eigenvalues to a file. The user can choose between saving as a 
+        .txt file or a .pkl file. The eigenvalues are sorted by their real part.
+
+        The file is saved in the 'data' folder of the script directory with
+        the name 'eigenvalues_nX.<extension>', where X is the number of 
+        eigenvalues computed and <extension> is either 'txt' or 'pkl'.
+        """
+        
+        # List to store eigenvalues (real and imaginary parts)
+        eigenvalues = [(val.real, val.imag) for _, val in self.vals]
+
+        # Ask the user for the preferred file format
+        file_format = input("Enter file format to save eigenvalues ('txt' or 'pkl'): ").strip().lower()
+        filename = os.path.join(self.parent_dir, f"data/eigenvalues_n{self.num_eigenvalues}.{file_format}")
+
+        # Ensure the directory exists
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+
+        if file_format == "txt":
+            # Save as a text file
+            with open(filename, "w") as f:
+                for real, imag in eigenvalues:
+                    f.write(f"{real}, {imag}\n")
+            print(f"Eigenvalues saved to: {filename}")
+
+        elif file_format == "pkl":
+            # Save as a pickle file
+            with open(filename, "wb") as f:
+                pickle.dump(eigenvalues, f)
+            print(f"Eigenvalues saved to: {filename}")
+
+        else:
+            print("Invalid file format. Please choose 'txt' or 'pkl'.")
 
     def run(self):
         self.create_domain()
@@ -312,6 +348,7 @@ class FENicSEigenProblem:
         self.set_boundary_condition()
         self.construct_matrix()
         self.solving()
+        self.save_eigenproblem()
 
 
 if __name__ == "__main__":
