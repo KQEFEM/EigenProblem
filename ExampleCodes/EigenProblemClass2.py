@@ -72,6 +72,7 @@ class FENicSEigenProblem:
         test_problem: bool = False,
         test_mode: bool = False,
         num_eigenvalues=10,
+        target_value_bool = False
     ):
         """
 
@@ -81,6 +82,7 @@ class FENicSEigenProblem:
           test_problem (bool): Run a predefined test problem (default: False).
           test_mode (bool): Enable testing mode for pytest (default: False).
           num_eigenvalues (int): Number of eigenvalues to compute (default: 10).
+          target_value_bool (bool): if True then you should specify the target in `def target_value` for manually
 
         """
         self.num_nodes = num_nodes
@@ -98,6 +100,7 @@ class FENicSEigenProblem:
         self.v = None
         self.bc = None
         self.RHS = None
+        self.target_value_bool = target_value_bool
 
         # Initialise domain and boundary settings
         if domain is None:
@@ -235,6 +238,21 @@ class FENicSEigenProblem:
         self.A.assemble()
         self.B = fem_petsc.assemble_matrix(self.b, bcs=[self.bc])
         self.B.assemble()
+        # Compute the conjugate transpose manually
+        # Compute the conjugate transpose of A
+        A_conj_transpose = self.A.transpose()
+        A_conj_transpose = A_conj_transpose.conjugate()
+
+        # Compute the conjugate transpose of B
+        B_conj_transpose = self.B.transpose()
+        B_conj_transpose = B_conj_transpose.conjugate()
+
+        # Check if both matrices are Hermitian: A = A^H and B = B^H
+        is_A_hermitian = self.A.equal(A_conj_transpose)
+        is_B_hermitian = self.B.equal(B_conj_transpose)
+
+        print(f"Is matrix A Hermitian? {is_A_hermitian}")
+        print(f"Is matrix B Hermitian? {is_B_hermitian}")
 
     def solving(self):
         """
@@ -255,7 +273,16 @@ class FENicSEigenProblem:
         eps.setType(
             SLEPc.EPS.Type.KRYLOVSCHUR
         )  # ? https://slepc.upv.es/documentation/slepc.pdf
-
+        
+        if self.target_value_bool is True:
+            # # Get ST context from eps
+            st = eps.getST()
+            # # Set shift-and-invert transformation
+            st.setType(SLEPc.ST.Type.SINVERT)
+            eps.setWhichEigenpairs(SLEPc.EPS.Which.TARGET_REAL)
+            eps.setTarget(-((0.5 * self.k0) ** 2))
+        
+        
         eps.setDimensions(nev=self.num_eigenvalues)
         """
 
@@ -274,6 +301,10 @@ class FENicSEigenProblem:
 
         # Sort kz by real part
         self.vals.sort(key=lambda x: x[1].real)
+        
+    def target_value(self):
+        """define the target value"""
+        self.target_value = -((0.5 * self.k0) ** 2)
 
     def run(self):
         self.create_domain()
@@ -315,6 +346,7 @@ if __name__ == "__main__":
         domain=[1, 1, 1],
         test_mode=False,
         num_eigenvalues=1,
+        target_value_bool=True,
     )
     eigen_problem.tol = 1e-9
     eigen_problem.domain = [1, 1, 1]
