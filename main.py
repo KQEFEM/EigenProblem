@@ -14,12 +14,12 @@ The class `FENicSEigenProblem` is designed to solve problems like the Maxwell eq
 - `num_eigenvalues` (int, optional): The number of eigenvalues to compute. Default is 10. You can specify a different number based on your requirements, such as `num_eigenvalues=25`.
 
 """
+import Classes.EigenProblemClass2 as EP
 
-import Classes.EigenProblemClas2 as EP
 
 # Create an instance of the FENicSEigenProblem class
 eigen_problem = EP.FENicSEigenProblem(
-    num_nodes=100, domain_type="cube", num_eigenvalues=25*2
+    num_nodes_1D=100, domain_type="cube", num_eigenvalues=25*2
 )
 eigen_problem.domain = [1, 1, 1]
 

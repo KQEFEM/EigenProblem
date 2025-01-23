@@ -66,7 +66,7 @@ class FENicSEigenProblem:
 
     def __init__(
         self,
-        num_nodes: int = 100,
+        num_nodes_1D: int = 100,
         domain_type: str = "cube",
         domain: list = None,
         test_problem: bool = False,
@@ -78,7 +78,7 @@ class FENicSEigenProblem:
         """
 
         Args:
-          num_nodes (int): Number of nodes for mesh generation (default: 100).
+          num_nodes_1D (int): Number of nodes for mesh generation. note that for a d=3D case it will be n^d (default: 100).
           domain_type (str): Type of domain (e.g., 'cube', 'rectangle'). In 3D [height width depth]
           test_problem (bool): Run a predefined test problem (default: False).
           test_mode (bool): Enable testing mode for pytest (default: False).
@@ -86,7 +86,7 @@ class FENicSEigenProblem:
           target_value_bool (bool): if True then you should specify the target in line 283 for manually
 
         """
-        self.num_nodes = num_nodes
+        self.num_nodes_1D = num_nodes_1D
         self.domain_type = domain_type
         self.test_problem = test_problem
         self.test_mode = test_mode
@@ -153,8 +153,8 @@ class FENicSEigenProblem:
                 MPI.COMM_WORLD,
                 [np.array([0, 0]), np.array([self.domain[0], self.domain[1]])],
                 [
-                    int(self.num_nodes),
-                    int(self.num_nodes * 0.4),
+                    int(self.num_nodes_1D),
+                    int(self.num_nodes_1D * 0.4),
                 ],  # Number of elements in each direction
                 dfl_mesh.CellType.quadrilateral,
             )
@@ -170,7 +170,7 @@ class FENicSEigenProblem:
                     np.array([0, 0, 0]),
                     np.array([self.domain[0], self.domain[1], self.domain[2]]),
                 ],
-                [int(self.num_nodes), int(self.num_nodes), int(self.num_nodes)],
+                [int(self.num_nodes_1D), int(self.num_nodes_1D), int(self.num_nodes_1D)],
                 dfl_mesh.CellType.hexahedron,
             )
             self.mesh.topology.create_connectivity(
@@ -179,7 +179,7 @@ class FENicSEigenProblem:
         else:
             print("\nStandard unit square is used.\n")
             # Create a unit square mesh
-            self.mesh = fem.UnitSquareMesh(self.num_nodes, self.num_nodes)
+            self.mesh = fem.UnitSquareMesh(self.num_nodes_1D, self.num_nodes_1D)
 
         # Create the function space
         self.nodes = self.mesh.geometry.x
@@ -382,11 +382,11 @@ if __name__ == "__main__":
     # test() #? THis is not set up to do any tests yet but only runs the main function
 
     eigen_problem = FENicSEigenProblem(
-        num_nodes=300,
+        num_nodes_1D=300,
         domain_type="rectangle",
         domain=[1, 1, 1],
         test_mode=False,
-        num_eigenvalues=1,
+        num_eigenvalues=10,
         target_value_bool=True,
         file_type="txt"
     )
