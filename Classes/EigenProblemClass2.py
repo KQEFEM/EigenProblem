@@ -304,8 +304,6 @@ class FENicSEigenProblem:
         # Sort kz by real part
         self.vals.sort(key=lambda x: x[1].real)
         
-    import pickle
-
     def save_eigenproblem(self):
         """
         Saves the eigenvalues to a file. The user can choose between saving as a 
