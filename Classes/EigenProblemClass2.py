@@ -134,7 +134,7 @@ class FENicSEigenProblem:
         # Frequency of the system (omega)
         height = self.domain[1]
         self.lambda0 = height / 0.2
-        self.k0 = fem.Constant(self.mesh, 2 * np.pi / self.lambda0)
+        self.k0 = fem.Constant(self.mesh, 2*np.pi*2.465e9)# 2 * np.pi / self.lambda0
 
         # Electric permittivity (epsilon).
         # Note that compared to the example we do not need to compute \varepsilon at each node as it is a constant here

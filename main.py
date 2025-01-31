@@ -22,6 +22,7 @@ eigen_problem = EP.FENicSEigenProblem(
     num_nodes_1D=10, domain_type="cube", num_eigenvalues=25*2
 )
 eigen_problem.domain = [0.01, 0.01, 0.01]
+eigen_problem.domain = [0.01, 0.01, 0.01]
 
 # Run the eigenvalue problem
 eigen_problem.run()
