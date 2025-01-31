@@ -19,9 +19,9 @@ import Classes.EigenProblemClass2 as EP
 
 # Create an instance of the FENicSEigenProblem class
 eigen_problem = EP.FENicSEigenProblem(
-    num_nodes_1D=100, domain_type="cube", num_eigenvalues=25*2
+    num_nodes_1D=10, domain_type="cube", num_eigenvalues=25*2
 )
-eigen_problem.domain = [1, 1, 1]
+eigen_problem.domain = [0.01, 0.01, 0.01]
 
 # Run the eigenvalue problem
 eigen_problem.run()

@@ -277,12 +277,15 @@ class FENicSEigenProblem:
         )  # ? https://slepc.upv.es/documentation/slepc.pdf
         
         if self.target_value_bool is True:
-            # # Get ST context from eps
-            st = eps.getST()
-            # # Set shift-and-invert transformation
-            st.setType(SLEPc.ST.Type.SINVERT)
-            eps.setWhichEigenpairs(SLEPc.EPS.Which.TARGET_REAL)
-            eps.setTarget(-((0.5 * self.k0) ** 2))
+            #! Set the target value for the eigenvalue solver
+            target_value = -((0.5 * self.k0) ** 2)
+            eps.setTarget(target_value)
+
+            #! Set the interval (lower and upper bounds) for the eigenvalue search
+            lower_bound = target_value - 1.0  # Adjust as needed
+            upper_bound = target_value + 1.0  # Adjust as needed
+            eps.setInterval(lower_bound, upper_bound)
+            
         
         
         eps.setDimensions(nev=self.num_eigenvalues)
