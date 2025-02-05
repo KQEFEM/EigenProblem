@@ -134,7 +134,7 @@ class FENicSEigenProblem:
         # Frequency of the system (omega)
         height = self.domain[1]
         self.lambda0 = height / 0.2
-        self.k0 = fem.Constant(self.mesh, 2*np.pi*2.465e9)# 2 * np.pi / self.lambda0
+        self.k0 = fem.Constant(self.mesh, 2*np.pi*29e9/3e8)# 2 * np.pi / self.lambda0
 
         # Electric permittivity (epsilon).
         # Note that compared to the example we do not need to compute \varepsilon at each node as it is a constant here
@@ -282,8 +282,8 @@ class FENicSEigenProblem:
             eps.setTarget(target_value)
 
             #! Set the interval (lower and upper bounds) for the eigenvalue search
-            lower_bound = target_value - 1.0  # Adjust as needed
-            upper_bound = target_value + 1.0  # Adjust as needed
+            lower_bound = target_value - 2.0  # Adjust as needed
+            upper_bound = target_value + 2.0  # Adjust as needed
             eps.setInterval(lower_bound, upper_bound)
             
         
