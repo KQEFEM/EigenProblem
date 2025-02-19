@@ -14,6 +14,8 @@ $$
 
 Currently this code only runs for a cube and dirichlet BCs but can be extended. 
 
+The standard FEM approach solves for the eigenvalues such that $ \lambda = \omega^2 $.
+
 ## Running
 **Note you should [install Docker Destop](https://www.docker.com/products/docker-desktop/) and in VSCODE install the docker extension** 
 

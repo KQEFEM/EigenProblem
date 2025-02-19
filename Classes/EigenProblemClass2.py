@@ -59,7 +59,11 @@ class FENicSEigenProblem:
         docker run -ti -v $(pwd):/home/fenics/shared -w /home/fenics/shared quay.io/fenicsproject/stable:current
 
     The solver uses SLEPc and is based on the tutorial:
+    
+    There is a simplification that one can use (implemented using simplification_bool):
     https://docs.fenicsproject.org/dolfinx/main/python/demos/demo_half_loaded_waveguide.html
+    and a general - standard - FEM approach where \lambda = \omega^2.
+    
     See https://slepc.upv.es/documentation/slepc.pdf for more information on SLEPc.
 
     #? The test mode is not set up yet.
