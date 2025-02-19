@@ -1,4 +1,5 @@
 import os
+import pickle
 
 import basix.ufl as ufl_basis
 import dolfinx.fem.petsc as fem_petsc
@@ -9,7 +10,7 @@ import ufl as ufl
 from dolfinx import fem
 from dolfinx import mesh as dfl_mesh
 from mpi4py import MPI
-import pickle
+
 try:
     import pyvista
 
@@ -72,8 +73,8 @@ class FENicSEigenProblem:
         test_problem: bool = False,
         test_mode: bool = False,
         num_eigenvalues=10,
-        target_value_bool = False,
-        file_type=None
+        target_value_bool=False,
+        file_type=None,
     ):
         """
 
@@ -116,7 +117,7 @@ class FENicSEigenProblem:
         self.script_dir = os.path.dirname(os.path.realpath(__file__))
         self.parent_dir = os.path.dirname(self.script_dir)  # Get the parent directory
         self.workspace = os.path.join(self.parent_dir, "EigenProblem")
-        self.file_type=file_type
+        self.file_type = file_type
 
     def set_constants(self):
         """
@@ -134,7 +135,9 @@ class FENicSEigenProblem:
         # Frequency of the system (omega)
         height = self.domain[1]
         self.lambda0 = height / 0.2
-        self.k0 = fem.Constant(self.mesh, 2*np.pi*29e9/3e8)# 2 * np.pi / self.lambda0
+        self.k0 = fem.Constant(
+            self.mesh, 2 * np.pi * 29e9 / 3e8
+        )  # 2 * np.pi / self.lambda0
 
         # Electric permittivity (epsilon).
         # Note that compared to the example we do not need to compute \varepsilon at each node as it is a constant here
@@ -170,7 +173,11 @@ class FENicSEigenProblem:
                     np.array([0, 0, 0]),
                     np.array([self.domain[0], self.domain[1], self.domain[2]]),
                 ],
-                [int(self.num_nodes_1D), int(self.num_nodes_1D), int(self.num_nodes_1D)],
+                [
+                    int(self.num_nodes_1D),
+                    int(self.num_nodes_1D),
+                    int(self.num_nodes_1D),
+                ],
                 dfl_mesh.CellType.hexahedron,
             )
             self.mesh.topology.create_connectivity(
@@ -189,7 +196,9 @@ class FENicSEigenProblem:
         Defines the function space. Here nedelec elements are used for the e_t terms and lagrange elements for the e_z.
         """
         degree = 1
-        RTCE = ufl_basis.element("RTCE", self.mesh.basix_cell(), degree, dtype=real_type)
+        RTCE = ufl_basis.element(
+            "RTCE", self.mesh.basix_cell(), degree, dtype=real_type
+        )
 
         Q = ufl_basis.element(
             "Lagrange", self.mesh.basix_cell(), degree, dtype=real_type
@@ -197,6 +206,9 @@ class FENicSEigenProblem:
         self.V = fem.functionspace(self.mesh, ufl_basis.mixed_element([RTCE, Q]))
 
     def weak_form(self):
+        pass
+
+    def weak_form_Ez(self):
         """
         This is taken directly from the example: https://docs.fenicsproject.org/dolfinx/main/python/demos/demo_half_loaded_waveguide.html
         """
@@ -275,7 +287,7 @@ class FENicSEigenProblem:
         eps.setType(
             SLEPc.EPS.Type.KRYLOVSCHUR
         )  # ? https://slepc.upv.es/documentation/slepc.pdf
-        
+
         if self.target_value_bool is True:
             #! Set the target value for the eigenvalue solver
             target_value = -((0.5 * self.k0) ** 2)
@@ -285,9 +297,7 @@ class FENicSEigenProblem:
             lower_bound = target_value - 2.0  # Adjust as needed
             upper_bound = target_value + 2.0  # Adjust as needed
             eps.setInterval(lower_bound, upper_bound)
-            
-        
-        
+
         eps.setDimensions(nev=self.num_eigenvalues)
         """
 
@@ -306,28 +316,33 @@ class FENicSEigenProblem:
 
         # Sort kz by real part
         self.vals.sort(key=lambda x: x[1].real)
-        
+
     def save_eigenproblem(self):
         """
-        Saves the eigenvalues to a file. The user can choose between saving as a 
+        Saves the eigenvalues to a file. The user can choose between saving as a
         .txt file or a .pkl file. The eigenvalues are sorted by their real part.
 
         The file is saved in the 'data' folder of the script directory with
-        the name 'eigenvalues_nX.<extension>', where X is the number of 
+        the name 'eigenvalues_nX.<extension>', where X is the number of
         eigenvalues computed and <extension> is either 'txt' or 'pkl'.
         """
-        
+
         # List to store eigenvalues (real and imaginary parts)
         eigenvalues = [(val.real, val.imag) for _, val in self.vals]
 
-        if self.file_type==None:
+        if self.file_type == None:
             # Ask the user for the preferred file format
-            file_format = input("Enter file format to save eigenvalues ('txt' or 'pkl'): ").strip().lower()
+            file_format = (
+                input("Enter file format to save eigenvalues ('txt' or 'pkl'): ")
+                .strip()
+                .lower()
+            )
         else:
             file_format = self.file_type.replace(".", "").replace(" ", "")
-        filename = os.path.join(self.parent_dir, f"data/eigenvalues_n{self.num_eigenvalues}.{file_format}")
-        
-            
+        filename = os.path.join(
+            self.parent_dir, f"data/eigenvalues_n{self.num_eigenvalues}.{file_format}"
+        )
+
         # Ensure the directory exists
         os.makedirs(os.path.dirname(filename), exist_ok=True)
 
@@ -389,7 +404,7 @@ if __name__ == "__main__":
         test_mode=False,
         num_eigenvalues=10,
         target_value_bool=True,
-        file_type="txt"
+        file_type="txt",
     )
     eigen_problem.tol = 1e-9
     eigen_problem.domain = [1, 1, 1]
