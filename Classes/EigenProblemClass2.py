@@ -75,6 +75,7 @@ class FENicSEigenProblem:
         num_eigenvalues=10,
         target_value_bool=False,
         file_type=None,
+        simplication_bool = False,
     ):
         """
 
@@ -85,6 +86,7 @@ class FENicSEigenProblem:
           test_mode (bool): Enable testing mode for pytest (default: False).
           num_eigenvalues (int): Number of eigenvalues to compute (default: 10).
           target_value_bool (bool): if True then you should specify the target in line 283 for manually
+          simplication_bool (bool): if True, it uses the waveguide example from FEniCS. Default is false.
 
         """
         self.num_nodes_1D = num_nodes_1D
@@ -113,6 +115,7 @@ class FENicSEigenProblem:
 
         # Experiment-related metadata
         self.experiment_name = None
+        self.simplication_bool = simplication_bool
         self.subfolder_name = None
         self.script_dir = os.path.dirname(os.path.realpath(__file__))
         self.parent_dir = os.path.dirname(self.script_dir)  # Get the parent directory
@@ -192,21 +195,65 @@ class FENicSEigenProblem:
         self.nodes = self.mesh.geometry.x
 
     def create_function_space(self):
-        """
-        Defines the function space. Here nedelec elements are used for the e_t terms and lagrange elements for the e_z.
-        """
-        degree = 1
-        RTCE = ufl_basis.element(
-            "RTCE", self.mesh.basix_cell(), degree, dtype=real_type
-        )
+        
+        if self.simplication_bool is True:
+            """
+            Defines the function space. Here nedelec elements are used for the e_t terms and lagrange elements for the e_z.
+            """
+            degree = 1
+            RTCE = ufl_basis.element(
+                "RTCE", self.mesh.basix_cell(), degree, dtype=real_type
+            )
 
-        Q = ufl_basis.element(
-            "Lagrange", self.mesh.basix_cell(), degree, dtype=real_type
-        )
-        self.V = fem.functionspace(self.mesh, ufl_basis.mixed_element([RTCE, Q]))
+            Q = ufl_basis.element(
+                "Lagrange", self.mesh.basix_cell(), degree, dtype=real_type
+            )
+            
+            self.V = fem.functionspace(self.mesh, ufl_basis.mixed_element([RTCE, Q]))
+        
+        else:
+            """
+            Defines the function space using Nédélec elements for the electric field.
+            """
+            degree = 1  # Degree of the Nédélec elements
+
+            # Define Nédélec elements for the electric field (vector field)
+            RTCE = ufl_basis.element(
+                "RTCE", self.mesh.basix_cell(), degree, dtype=real_type
+            )
+            # Create the function space
+            self.V = fem.functionspace(self.mesh, RTCE)
 
     def weak_form(self):
-        pass
+        r"""Computes the weak form of the Maxwell eigenvalue problem.
+
+        This method defines the weak form by calculating the curl-curl
+        and mass bilinear forms, then combines them to form the left-hand
+        side (LHS) and right-hand side (RHS) of the generalized eigenvalue problem.
+
+        \nabla \times \nabla \times E - \omega^2 \varepsilon \mu E = 0
+        """
+
+        # Define trial and test functions
+        self.u = ufl.TrialFunction(self.V)
+        self.v = ufl.TestFunction(self.V)
+        
+        # Define the curl-curl bilinear form (A matrix in A x = λ B x)
+        curl_curl = ufl.dot(ufl.curl(self.u), ufl.curl(self.v)) * ufl.dx
+
+        # Define the mass bilinear form (B matrix in A x = λ B x)
+        mass = (
+            self.permittivity
+            * self.permeability
+            * ufl.dot(self.u, self.v)
+            * ufl.dx
+        )
+
+        # LHS is the curl-curl term, RHS is the mass term
+        self.LHS = fem.form(curl_curl)  # Fix: Convert to fem.form
+        self.RHS = fem.form(mass)  
+
+
 
     def weak_form_Ez(self):
         """
@@ -228,8 +275,8 @@ class FENicSEigenProblem:
             - (self.k0**2) * self.permittivity * ufl.inner(ez, vz)
         ) * ufl.dx
 
-        self.a = fem.form(a_tt)
-        self.b = fem.form(b_tt + b_tz + b_zt + b_zz)
+        self.LHS = fem.form(a_tt)
+        self.RHS = fem.form(b_tt + b_tz + b_zt + b_zz)
 
     def set_boundary_condition(self):
         """
@@ -248,9 +295,9 @@ class FENicSEigenProblem:
         self.bc = fem.dirichletbc(u_bc, bc_dofs)
 
     def construct_matrix(self):
-        self.A = fem_petsc.assemble_matrix(self.a, bcs=[self.bc])
+        self.A = fem_petsc.assemble_matrix(self.LHS, bcs=[self.bc])
         self.A.assemble()
-        self.B = fem_petsc.assemble_matrix(self.b, bcs=[self.bc])
+        self.B = fem_petsc.assemble_matrix(self.RHS, bcs=[self.bc])
         self.B.assemble()
         # Compute the conjugate transpose manually
         # Compute the conjugate transpose of A
