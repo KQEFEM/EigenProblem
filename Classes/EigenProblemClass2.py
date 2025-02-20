@@ -362,7 +362,7 @@ class FENicSEigenProblem:
         eps.errorView()
 
         self.vals = [
-            (i, np.sqrt(-eps.getEigenvalue(i))) for i in range(eps.getConverged())
+            (i, np.sqrt(eps.getEigenvalue(i))) for i in range(eps.getConverged())
         ]
 
         # Sort kz by real part
