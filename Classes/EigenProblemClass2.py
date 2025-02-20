@@ -365,7 +365,7 @@ class FENicSEigenProblem:
             (i, np.sqrt(eps.getEigenvalue(i))) for i in range(eps.getConverged())
         ]
 
-        # Sort kz by real part
+        # Sort lambda by real part
         self.vals.sort(key=lambda x: x[1].real)
 
     def save_eigenproblem(self):
