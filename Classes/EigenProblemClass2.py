@@ -143,7 +143,7 @@ class FENicSEigenProblem:
         height = self.domain[1]
         self.lambda0 = height / 0.2
         self.k0 = fem.Constant(
-            self.mesh, 2 * np.pi * 29e9 / 3e8
+            self.mesh, 2 * np.pi * 21e9
         )  # 2 * np.pi / self.lambda0
 
         # Electric permittivity (epsilon).
@@ -345,8 +345,8 @@ class FENicSEigenProblem:
             eps.setTarget(target_value)
 
             #! Set the interval (lower and upper bounds) for the eigenvalue search
-            lower_bound = target_value - 2.0  # Adjust as needed
-            upper_bound = target_value + 2.0  # Adjust as needed
+            lower_bound = -((15e9) ** 2)  # Adjust as needed
+            upper_bound = -((29e9) ** 2)   # Adjust as needed
             eps.setInterval(lower_bound, upper_bound)
 
         eps.setDimensions(nev=self.num_eigenvalues)
