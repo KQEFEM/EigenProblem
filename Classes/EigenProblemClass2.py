@@ -342,13 +342,13 @@ class FENicSEigenProblem:
         if self.target_value_bool is True:
             #! Set the target value for the eigenvalue solver
             # target_value = -((0.5 * self.k0) ** 2)
-            target_value = (15e9**2 + 29e9**2)/2
+            target_value = -(15e9**2 + 29e9**2)/2
             eps.setTarget(target_value)
 
             #! Set the interval (lower and upper bounds) for the eigenvalue search
-            lower_bound = -((15e9) ** 2)  # Adjust as needed
-            upper_bound = -((29e9) ** 2)   # Adjust as needed
-            eps.setInterval(lower_bound, upper_bound)
+            # lower_bound = -((15e9) ** 2)  # Adjust as needed
+            # upper_bound = -((29e9) ** 2)   # Adjust as needed
+            # eps.setInterval(lower_bound, upper_bound)
 
         eps.setDimensions(nev=self.num_eigenvalues)
         """
