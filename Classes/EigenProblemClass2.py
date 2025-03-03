@@ -80,6 +80,7 @@ class FENicSEigenProblem:
         target_value_bool=False,
         file_type=None,
         simplication_bool = False,
+        tol =1e-9,
     ):
         """
 
@@ -100,7 +101,7 @@ class FENicSEigenProblem:
         self.num_eigenvalues = num_eigenvalues
 
         # Set default tolerances and placeholders for FEniCS objects
-        self.tol = 1e-9
+        self.tol = tol
         self.mesh = None
         self.nodes: int = None
         self.V = None
@@ -144,7 +145,7 @@ class FENicSEigenProblem:
         self.lambda0 = height / 0.2
         self.k0 = fem.Constant(
             self.mesh, 2 * np.pi * 21e9
-        )  # 2 * np.pi / self.lambda0
+        )  # 2 * np.pi / self.lambda0 #! This might need a square value 
 
         # Electric permittivity (epsilon).
         # Note that compared to the example we do not need to compute \varepsilon at each node as it is a constant here
@@ -243,13 +244,13 @@ class FENicSEigenProblem:
         self.v = ufl.TestFunction(self.V)
         
         # Define the curl-curl bilinear form (A matrix in A x = λ B x)
-        curl_curl = ufl.dot(ufl.curl(self.u), ufl.curl(self.v)) * ufl.dx
+        curl_curl = ufl.inner(ufl.curl(self.v), ufl.curl(self.u)) * ufl.dx
 
         # Define the mass bilinear form (B matrix in A x = λ B x)
         mass = (
             self.permittivity
             * self.permeability
-            * ufl.dot(self.u, self.v)
+            * ufl.dot(self.v, self.u)
             * ufl.dx
         )
 
@@ -338,12 +339,20 @@ class FENicSEigenProblem:
         eps.setType(
             SLEPc.EPS.Type.KRYLOVSCHUR
         )  # ? https://slepc.upv.es/documentation/slepc.pdf
-
+        
         if self.target_value_bool is True:
             #! Set the target value for the eigenvalue solver
-            # target_value = -((0.5 * self.k0) ** 2)
-            target_value = -(15e9**2 + 29e9**2)/2
-            eps.setTarget(target_value)
+            target_value = -((0.5 * self.k0) ** 2)
+            # target_value = (15e9**2 + 29e9**2)/2
+            # Get ST context from eps
+            st = eps.getST()
+
+            # Set shift-and-invert transformation
+            st.setType(SLEPc.ST.Type.SINVERT)
+            
+            eps.setWhichEigenpairs(SLEPc.EPS.Which.TARGET_MAGNITUDE)
+
+            eps.setTarget(-((0.5 * self.k0) ** 2))
 
             #! Set the interval (lower and upper bounds) for the eigenvalue search
             # lower_bound = -((15e9) ** 2)  # Adjust as needed
@@ -358,6 +367,12 @@ class FENicSEigenProblem:
         from SLEPc by calling the `view` and `errorView` function:
 
         """
+        # # Enable diagnostics
+        # eps.setTrackAll(True)
+        # eps.setConvergenceTest(SLEPc.EPS.Conv.REL)
+        # eps.setTrueResidual(True)
+        
+        # SOLVE
         eps.solve()
         eps.view()
         eps.errorView()
